@@ -40,7 +40,7 @@ This is **not** a dating app for properties, but it might as well be! Swipe (oka
 ## **How to Get Started**  
 1. Clone the repo like the tech guru you are:  
    ```bash
-   git clone https://github.com/your-repo/property-rental-platform.git
+   git clone https://github.com/johnhenry411/property-rental-platform.git
    ```
 2. Step into the magical world of Django:  
    ```bash
