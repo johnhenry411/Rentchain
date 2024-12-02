@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<body>
+    <div class="container d-flex justify-content-center align-items-center" style="min-height: 100vh;">
+        <div class="card p-4 shadow-lg" style="width: 100%; max-width: 400px;">
+            <h3 class="text-center mb-4">Sign Up</h3>
+            <form method="POST">
+                {% csrf_token %}
+                {{ form.non_field_errors }}
+                
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" name="username" class="form-control" id="username" value="{{ form.username.value }}" required>
+                    {{ form.username.errors }}
+                </div>
+
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email Address</label>
+                    <input type="email" name="email" class="form-control" id="email" value="{{ form.email.value }}" required>
+                    {{ form.email.errors }}
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" name="password" class="form-control" id="password" value="{{ form.password.value }}" required>
+                    {{ form.password.errors }}
+                </div>
+
+                <div class="mb-3">
+                    <label for="confirm_password" class="form-label">Confirm Password</label>
+                    <input type="password" name="confirm_password" class="form-control" id="confirm_password" value="{{ form.confirm_password.value }}" required>
+                    {{ form.confirm_password.errors }}
+                </div>
+
+                <div class="mb-3">
+                    <label for="role" class="form-label">Role</label>
+                    <select name="role" class="form-select" id="role" required>
+                        <option value="client" {% if form.role.value == "client" %} selected {% endif %}>Client</option>
+                        <option value="landlord" {% if form.role.value == "landlord" %} selected {% endif %}>Landlord</option>
+                        <option value="admin" {% if form.role.value == "admin" %} selected {% endif %}>Admin</option>
+                    </select>
+                    {{ form.role.errors }}
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">Sign Up</button>
+            </form>
+
+            <p class="text-center mt-3">
+                Already have an account? <a href="{% url 'login' %}">Log in</a>
+            </p>
+        </div>
+    </div>
+</body>
+{% endblock %}
