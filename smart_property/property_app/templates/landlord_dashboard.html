@@ -1,0 +1,14 @@
+<h1>Welcome, {{ request.user.username }} (Landlord)</h1>
+<h2>Your Properties</h2>
+<ul>
+  {% for property in properties %}
+    <li>{{ property.property_name }}: {{ property.property_value }}</li>
+  {% endfor %}
+</ul>
+
+<h2>Leases for Your Properties</h2>
+<ul>
+  {% for lease in leases %}
+    <li>{{ lease.property.property_name }}: {{ lease.tenant.username }}</li>
+  {% endfor %}
+</ul>

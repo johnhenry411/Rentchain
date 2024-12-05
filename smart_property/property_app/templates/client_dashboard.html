@@ -1,0 +1,14 @@
+<h1>Welcome, {{ request.user.username }} (Client)</h1>
+<h2>Your Leases</h2>
+<ul>
+  {% for lease in leases %}
+    <li>{{ lease.property.property_name }}: {{ lease.lease_value }}</li>
+  {% endfor %}
+</ul>
+
+<h2>Your Reviews</h2>
+<ul>
+  {% for review in reviews %}
+    <li>{{ review.property.property_name }}: {{ review.stars }} stars</li>
+  {% endfor %}
+</ul>
