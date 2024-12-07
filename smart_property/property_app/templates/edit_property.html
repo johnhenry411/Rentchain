@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Edit Property</h1>
+
+<form method="post" enctype="multipart/form-data" action="">
+    {% csrf_token %}
+    <h3>Property Details</h3>
+    {{ property_form.as_p }}
+
+    <h3>Property Images</h3>
+    {{ image_formset.management_form }}
+    {% for form in image_formset %}
+        {{ form.as_p }}
+    {% endfor %}
+
+    <button type="submit">Update Property</button>
+</form>
+
+<a href="{% url 'landlord_dashboard' %}">Back to Dashboard</a>
+{% endblock %}

@@ -1,14 +1,120 @@
-<h1>Welcome, {{ request.user.username }} (Landlord)</h1>
-<h2>Your Properties</h2>
-<ul>
-  {% for property in properties %}
-    <li>{{ property.property_name }}: {{ property.property_value }}</li>
-  {% endfor %}
-</ul>
+{% extends "base.html" %}
+{% block content %}
+{% if properties%}
+{%for p in properties%}
+<div class="wrapper">
+ <div class="card mb-4 shadow-sm">
+    <!-- Carousel for Property Images -->
+    <div id="propertyCarousel{{ p.id }}" class="carousel slide" data-bs-ride="carousel">
+        <div class="carousel-inner">
+            {% for image in p.images.all %}
+                <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                    <img src="{{ image.image.url }}" class="d-block w-100" alt="Property Image">
+                </div>
+            {% endfor %}
+        </div>
+        <!-- Carousel Controls -->
+        <button class="carousel-control-prev" type="button" data-bs-target="#propertyCarousel{{ property.id }}" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Previous</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#propertyCarousel{{ property.id }}" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Next</span>
+        </button>
+    </div>
 
-<h2>Leases for Your Properties</h2>
-<ul>
-  {% for lease in leases %}
-    <li>{{ lease.property.property_name }}: {{ lease.tenant.username }}</li>
-  {% endfor %}
-</ul>
+    <!-- Property Details -->
+    <div class="card-body">
+        <h5 class="card-title">{{ p.name }}</h5>
+        <p class="card-text">
+            <strong>Location:</strong> {{ p.location }} <br>
+            <strong>Price:</strong> ${{ p.price }} <br>
+            <strong>Description:</strong> {{ p.description }}
+        </p>
+        <div class="d-flex justify-content-between align-items-center">
+            {% if p.id %}
+    <a href="{% url 'property_edit' p.id %}" class="btn btn-primary btn-sm">Edit</a>
+{% else %}
+    <span class="text-muted">Edit not available</span>
+{% endif %}
+            {%if p.id%}
+            <form action="{% url 'property_delete' p.id %}" method="POST" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+            </form>
+            {%else%}
+            <span class="text-muted">Delete not available</span>
+            {%endif%}
+        </div>
+    </div>
+</div>
+</div>
+{% endfor %}
+{%else%}
+<P>NO PROPERTIES</P>
+{% endif %}
+
+<button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#property-form-container">
+    Add Property
+</button>
+
+<!-- Collapsible form -->
+<div class="collapse mt-3" id="property-form-container">
+    <form method="post" enctype="multipart/form-data" action="{% url 'landlord_dashboard' %}">
+        {% csrf_token %}
+        <h3>Add Property</h3>
+        {{ property_form.as_p }}
+        {{ image_formset.management_form }}
+        {% for form in image_formset %}
+            {{ form.as_p }}
+        {% endfor %}
+        <button class="btn btn-success" type="submit">Submit</button>
+    </form>
+</div>
+
+<style>
+    .wrapper{
+        display:flex;
+        flex-direction: row
+        background-color:red;
+    }
+    .card {
+        border-radius: 10px;
+        overflow: hidden;
+        transition: transform 0.3s ease-in-out;
+        width:18rem;
+        margin: 40px;
+    }
+    
+    .card:hover {
+        transform: scale(1.02);
+    }
+    
+    .carousel-inner img {
+        height: 250px;
+        object-fit: cover;
+    }
+    
+    .card-title {
+        font-weight: bold;
+        color: #343a40;
+    }
+    
+    .card-text {
+        color: #6c757d;
+    }
+    
+    .btn-primary {
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+    
+    .btn-danger {
+        background-color: #dc3545;
+        border-color: #dc3545;
+    }
+</style>
+
+
+{%endblock%}

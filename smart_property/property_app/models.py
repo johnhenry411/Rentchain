@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
 import uuid
 from django.core.validators import MinValueValidator, MaxValueValidator
-
+from django.conf import settings
 
 # Assign roles to groups during setup
 def setup_roles():
@@ -70,17 +70,23 @@ class User(AbstractUser):
 
 
 class Property(models.Model):
-    property_name = models.CharField(max_length=100, default='Property Name')
-    property_description = models.TextField(default='Property description')
-    address = models.CharField(max_length=100, default='Property location')
-
-    landlord = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role': 'landlord'})
-    
-    main_image = models.ImageField(upload_to='media/property_images')
-    property_value = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    landlord = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="properties")
+    name = models.CharField(max_length=255, default='test')
+    description = models.TextField(default='test')
+    price = models.DecimalField(max_digits=10, decimal_places=2,default='123')
+    location = models.CharField(max_length=255,default='test')
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.property_name
+        return self.name
+
+class PropertyImage(models.Model):
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="images")
+    image = models.ImageField(upload_to='property_images/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Image for {self.property.name}"
 
 
 class PropertyImage(models.Model):
@@ -112,3 +118,22 @@ class Review(models.Model):
 
     def __str__(self):
         return f"Review by {self.tenant} for {self.property}"
+
+
+from django.db import models
+from django.conf import settings
+
+class Profile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,  # Link to the User model
+        on_delete=models.CASCADE,
+        related_name='profile'
+    )
+    bio = models.TextField(max_length=500, blank=True)
+    profile_picture = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
+    address = models.CharField(max_length=255, blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username}'s Profile"
