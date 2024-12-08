@@ -35,7 +35,7 @@ class ProfileUpdateForm(forms.ModelForm):
 class PropertyForm(forms.ModelForm):
     class Meta:
         model=Property
-        fields = ['name', 'description', 'price', 'location']
+        fields = ['name', 'description', 'price', 'location','category']
         
 class PropertyImageForm(forms.ModelForm):
     class Meta:

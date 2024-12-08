@@ -103,7 +103,12 @@ def login_view(request):
 
 def home(request):
     property_images = PropertyImage.objects.all()
-    return render(request, 'index.html', {'property_images': property_images})
+    categories = Property.CATEGORY_CHOICES
+    properties_by_category = {
+        category[1]: Property.objects.filter(category=category[0]).prefetch_related('images')
+        for category in categories
+    }
+    return render(request, 'index.html', {'property_images': property_images, 'properties_by_category': properties_by_category,})
 
 def base_page(request):
     from property_app.utils import get_dashboard_url

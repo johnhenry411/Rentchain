@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
+<h1 style="text-align: center;margin-top:40px">your properties</h1>
 {% if properties%}
 {%for p in properties%}
 <div class="wrapper">
@@ -30,7 +31,8 @@
         <p class="card-text">
             <strong>Location:</strong> {{ p.location }} <br>
             <strong>Price:</strong> ${{ p.price }} <br>
-            <strong>Description:</strong> {{ p.description }}
+            <strong>Description:</strong> {{ p.description }}<br>
+            <strong>Category:</strong> {{ p.category }}
         </p>
         <div class="d-flex justify-content-between align-items-center">
             {% if p.id %}
