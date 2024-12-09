@@ -1,5 +1,5 @@
 from django import forms
-from .models import User
+from .models import User,Property,PropertyImage
 
 from django.contrib.auth.forms import AuthenticationForm
 
@@ -24,3 +24,20 @@ class CustomLoginForm(AuthenticationForm):
     password = forms.CharField(
         widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Enter your password'})
     )
+    
+from .models import Profile
+
+class ProfileUpdateForm(forms.ModelForm):
+    class Meta:
+        model = Profile
+        fields = ['bio', 'profile_picture', 'phone_number', 'address']
+
+class PropertyForm(forms.ModelForm):
+    class Meta:
+        model=Property
+        fields = ['name', 'description', 'price', 'location','category','t_type','number_of_units']
+        
+class PropertyImageForm(forms.ModelForm):
+    class Meta:
+        model = PropertyImage
+        fields = ['image']
