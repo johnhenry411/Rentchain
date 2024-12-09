@@ -14,6 +14,7 @@ from .forms import ProfileUpdateForm,PropertyForm, PropertyImageForm
 from django.forms import modelformset_factory
 from django.views import View
 from django.contrib import messages
+from django.db.models import Prefetch
 
 def role_required(role):
     def decorator(view_func):
@@ -103,12 +104,15 @@ def login_view(request):
 
 def home(request):
     property_images = PropertyImage.objects.all()
+    units= Property.objects.prefetch_related(
+        Prefetch('images', queryset=PropertyImage.objects.order_by('uploaded_at'))
+    )
     categories = Property.CATEGORY_CHOICES
     properties_by_category = {
         category[1]: Property.objects.filter(category=category[0]).prefetch_related('images')
         for category in categories
     }
-    return render(request, 'index.html', {'property_images': property_images, 'properties_by_category': properties_by_category,})
+    return render(request, 'index.html', {'property_images': property_images, 'properties_by_category': properties_by_category,'units':units})
 
 def base_page(request):
     from property_app.utils import get_dashboard_url
@@ -124,7 +128,7 @@ def update_profile(request):
         form = ProfileUpdateForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
             form.save()
-            return redirect('profile')  # Replace 'profile' with your profile view URL name
+            return redirect('profile')  
     else:
         form = ProfileUpdateForm(instance=profile)
 
@@ -135,7 +139,6 @@ def update_profile(request):
 class LandlordDashboardView(View):
     
     def get(self, request, *args, **kwargs):
-        # Check if the user is a landlord
         if getattr(request.user, 'role', None) != 'landlord':
             return redirect('login')
 

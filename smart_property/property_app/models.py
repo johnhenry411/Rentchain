@@ -76,6 +76,12 @@ class Property(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2,default='123')
     location = models.CharField(max_length=255,default='test')
     created_at = models.DateTimeField(auto_now_add=True)
+    number_of_units=models.IntegerField()
+    lease_type=[
+        ('rent','Rent'),
+        ('sale','Sale'),
+        ('lease','Lease')
+    ]
     CATEGORY_CHOICES = [
         ('apartment', 'Apartment'),
         ('villa', 'Villa'),
@@ -84,23 +90,18 @@ class Property(models.Model):
         ('Garage', 'garage'),
     ]
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='apartment')
+    t_type= models.CharField(max_length=50,choices=lease_type,default='rent')
 
     def __str__(self):
         return self.name
 
-class PropertyImage(models.Model):
-    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="images")
-    image = models.ImageField(upload_to='property_images/')
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Image for {self.property.name}"
 
 
 class PropertyImage(models.Model):
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='media/property_images')
     image_id = models.CharField(max_length=5)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Image {self.image_id} of {self.property}"
