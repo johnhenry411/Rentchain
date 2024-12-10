@@ -137,7 +137,7 @@
                                 <div class="property-item rounded overflow-hidden">
                                     <div class="position-relative overflow-hidden">
                                         {% if u.images.all|length > 0 %}
-                    <a href=""><img class="img-fluid" src="{{ u.images.all.0.image.url }}" alt="{{ p.name }}"></a>
+                    <a href="{% url 'property_detail' u.id|stringformat:"i" %}"><img class="img-fluid" src="{{ u.images.all.0.image.url }}" alt="{{ p.name }}"></a>
                 {% else %}
                     <a href=""><img class="img-fluid" src="/path/to/default/image.jpg" alt="No image available"></a>
                 {% endif %}
