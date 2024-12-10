@@ -77,6 +77,7 @@ class Property(models.Model):
     location = models.CharField(max_length=255,default='test')
     created_at = models.DateTimeField(auto_now_add=True)
     number_of_units=models.IntegerField()
+
     lease_type=[
         ('rent','Rent'),
         ('sale','Sale'),

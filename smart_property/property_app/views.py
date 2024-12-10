@@ -104,6 +104,9 @@ def login_view(request):
 
 def home(request):
     property_images = PropertyImage.objects.all()
+    properties = Property.objects.all()
+    for property in properties:
+        print(property.id) 
     units= Property.objects.prefetch_related(
         Prefetch('images', queryset=PropertyImage.objects.order_by('uploaded_at'))
     )
@@ -239,3 +242,7 @@ class PropertyDeleteView(View):
         property_instance.delete()
         messages.success(request, "Property deleted successfully!")
         return HttpResponseRedirect(reverse('landlord_dashboard'))
+    
+def property_detail(request, id):
+    property = get_object_or_404(Property, id=id)
+    return render(request, 'property_detail.html', {'property': property})
