@@ -1,0 +1,89 @@
+
+{% extends "base.html" %}
+{% block content %}
+<!-- Property Details Section -->
+<section class="property-details py-5 bg-light">
+    <div class="container">
+        <!-- Row for carousel and property details -->
+        <div class="row">
+            <!-- Property Images Carousel (Left Side) -->
+            <div class="col-md-6">
+                <div id="propertyImagesCarousel" class="carousel slide" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        {% for image in property.images.all %}
+                            <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                                <img src="{{ image.image.url }}" class="d-block w-100" alt="{{ property.name }}">
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#propertyImagesCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#propertyImagesCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Property Info Section (Right Side) -->
+            <div class="col-md-6">
+                <h2 class="display-4 text-primary">{{ property.name }}</h2>
+                <p class="lead text-muted">Located in {{ property.location }}</p>
+                <h3 class="text-success">KSH. {{ property.price }}</h3>
+
+                <div class="mt-4">
+                    <h4 class="text-primary">Description</h4>
+                    <p>{{ property.description }}</p>
+                </div>
+
+                <!-- Property Details List -->
+                <div class="mt-4">
+                    <h5 class="text-primary">Property Details</h5>
+                    <ul class="list-unstyled">
+                        <li><strong>Category:</strong> <span class="badge bg-info">{{ property.get_category_display }}</span></li>
+                        <li><strong>For:</strong> <span class="badge bg-success">{{ property.get_t_type_display }}</span></li>
+                        <li><strong>Size:</strong> <span>1,200 Sqft</span></li>
+                        <li><strong>Beds:</strong> <span>3</span></li>
+                        <li><strong>Baths:</strong> <span>2</span></li>
+                    </ul>
+                </div>
+
+                <!-- Contact Button -->
+                <div class="mt-4 text-center">
+                    <a href="mailto:info@example.com" class="btn btn-primary btn-lg">make proporsal</a>
+                </div>
+                <div class="mt-4 text-center">
+                    <a href="mailto:info@example.com" class="btn btn-primary btn-lg">view contract</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .property-details .carousel-item img {
+        max-height: 500px;
+        object-fit: cover;
+    }
+    
+    .property-details h2, .property-details h3 {
+        font-weight: bold;
+    }
+    
+    .property-details .bg-info {
+        font-weight: bold;
+    }
+    
+    .property-details .list-unstyled li {
+        margin-bottom: 10px;
+    }
+    
+    .property-details .btn-lg {
+        padding: 15px 30px;
+    }
+    
+</style>
+
+{%endblock%}
