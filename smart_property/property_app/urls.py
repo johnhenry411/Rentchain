@@ -12,4 +12,6 @@ urlpatterns = [
     path('update-profile/', update_profile, name='update_profile'),
     path('landlord/property/edit/<int:property_id>/', PropertyEditView.as_view(), name='property_edit'),
     path('landlord/property/delete/<int:property_id>/', PropertyDeleteView.as_view(), name='property_delete'),
+    path('property/<int:id>/', views.property_detail, name='property_detail'),
+
 ]
