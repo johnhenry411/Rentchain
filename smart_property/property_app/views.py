@@ -8,9 +8,9 @@ from django.shortcuts import render, redirect
 from django.http import HttpResponseForbidden
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
-from .models import User,Lease,Property, PropertyImage
+from .models import User,Lease,Property, PropertyImage, Proposal
 from property_app.utils import get_dashboard_url
-from .forms import ProfileUpdateForm,PropertyForm, PropertyImageForm
+from .forms import ProfileUpdateForm,PropertyForm, PropertyImageForm,ProposalForm
 from django.forms import modelformset_factory
 from django.views import View
 from django.contrib import messages
@@ -147,6 +147,7 @@ class LandlordDashboardView(View):
 
         properties = Property.objects.filter(landlord=request.user)
         PropertyImageFormSet = modelformset_factory(PropertyImage, form=PropertyImageForm, extra=3)
+        proposals = Proposal.objects.filter(property__in=properties).select_related('proposer', 'property')
 
         property_form = PropertyForm()
         image_formset = PropertyImageFormSet(queryset=PropertyImage.objects.none())
@@ -155,6 +156,8 @@ class LandlordDashboardView(View):
             'properties': properties,
             'property_form': property_form,
             'image_formset': image_formset,
+             'proposals':proposals,
+
         })
 
     def post(self, request, *args, **kwargs):
@@ -189,6 +192,7 @@ class LandlordDashboardView(View):
             'properties': properties,
             'property_form': property_form,
             'image_formset': image_formset,
+            'proporsals':proporsals,
         })
 
 # Edit Property View
@@ -246,3 +250,17 @@ class PropertyDeleteView(View):
 def property_detail(request, id):
     property = get_object_or_404(Property, id=id)
     return render(request, 'property_detail.html', {'property': property})
+
+def submit_proposal(request, property_id):
+    property = get_object_or_404(Property, id=property_id)
+    if request.method == 'POST':
+        form = ProposalForm(request.POST)
+        if form.is_valid():
+            proposal = form.save(commit=False)
+            proposal.property = property
+            proposal.proposer = request.user
+            proposal.save()
+            return redirect('property_detail', id=property.id)
+    else:
+        form = ProposalForm()
+    return render(request, 'submit_proposal.html', {'form': form, 'property': property})

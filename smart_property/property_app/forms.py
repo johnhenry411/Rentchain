@@ -1,5 +1,5 @@
 from django import forms
-from .models import User,Property,PropertyImage
+from .models import User,Property,PropertyImage,Proposal
 
 from django.contrib.auth.forms import AuthenticationForm
 
@@ -35,9 +35,18 @@ class ProfileUpdateForm(forms.ModelForm):
 class PropertyForm(forms.ModelForm):
     class Meta:
         model=Property
-        fields = ['name', 'description', 'price', 'location','category','t_type','number_of_units']
+        fields = ['name', 'description', 'price', 'location','category','t_type','number_of_units','beds','baths','size']
         
 class PropertyImageForm(forms.ModelForm):
     class Meta:
         model = PropertyImage
         fields = ['image']
+        
+class ProposalForm(forms.ModelForm):
+    class Meta:
+        model = Proposal
+        fields = ['proposed_price', 'message']
+        widgets = {
+            'proposed_price': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Propose your price'}),
+            'message': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Leave a message (optional)'}),
+        }
