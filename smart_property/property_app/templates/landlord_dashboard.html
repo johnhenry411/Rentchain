@@ -96,6 +96,31 @@
     </form>
 </div>
 
+<div class="container">
+    <h2>Your Proposals</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Property</th>
+                <th>Proposed Price</th>
+                <th>Proposer</th>
+                <th>Message</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for proposal in proposals %}
+            <tr>
+                <td>{{ proposal.property.name }}</td>
+                <td>KSH. {{ proposal.proposed_price }}</td>
+                <td>{{ proposal.proposer.username }}</td>
+                <td>{{ proposal.message }}</td>
+                <td>{{ proposal.created_at }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 <style>
     .wrapper{
         display:flex;

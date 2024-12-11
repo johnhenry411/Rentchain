@@ -77,6 +77,9 @@ class Property(models.Model):
     location = models.CharField(max_length=255,default='test')
     created_at = models.DateTimeField(auto_now_add=True)
     number_of_units=models.IntegerField()
+    size=models.IntegerField()
+    baths=models.IntegerField()
+    beds=models.IntegerField()
 
     lease_type=[
         ('rent','Rent'),
@@ -147,3 +150,13 @@ class Profile(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s Profile"
+
+class Proposal(models.Model):
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='proposals')
+    proposer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='proposals')
+    proposed_price = models.DecimalField(max_digits=10, decimal_places=2)
+    message = models.TextField(blank=True, null=True)  # Optional field for additional comments
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Proposal by {self.proposer} for {self.property.name} - {self.proposed_price}"

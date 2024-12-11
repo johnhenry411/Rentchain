@@ -52,11 +52,9 @@
 
                 <!-- Contact Button -->
                 <div class="mt-4 text-center">
-                    <a href="mailto:info@example.com" class="btn btn-primary btn-lg">make proporsal</a>
+                    <a href="{% url 'submit_proposal' property.id %}" class="btn btn-success">Propose a Price</a>
                 </div>
-                <div class="mt-4 text-center">
-                    <a href="mailto:info@example.com" class="btn btn-primary btn-lg">view contract</a>
-                </div>
+                
             </div>
         </div>
     </div>
