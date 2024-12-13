@@ -1,33 +1,145 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="contract">
-    <h1>Rental Agreement for {{ property.name }}</h1>
-    <p>This agreement is made between <strong>{{ proposal.property.landlord.username }}</strong> (the Landlord) and <strong>{{ proposal.proposer.username }}</strong> (the Tenant).</p>
-   
-    <h3>Property Details:</h3>
-    <p><strong>Property Name:</strong> {{ property.name }}</p>
-    <p><strong>Location:</strong> {{ property.location }}</p>
-    <p><strong>Description:</strong> {{ property.description }}</p>
-    <p><strong>Price:</strong> KES {{ property.price }}</p>
-    <p><strong>Lease Type:</strong> {{ property.t_type }}</p>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .contract-container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: #fff;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+        .header {
+            text-align: center;
+            color: #4CAF50;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        .header p {
+            font-style: italic;
+            color: #555;
+        }
+        .section-title {
+            font-size: 1.8rem;
+            margin-top: 1.5rem;
+            color: #4CAF50;
+        }
+        .clause {
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            border-left: 4px solid #4CAF50;
+            background: #f9f9f9;
+        }
+        .signature-section {
+            text-align: center;
+            margin-top: 2rem;
+        }
+        .signature {
+            display: inline-block;
+            margin: 1rem;
+            padding: 1rem;
+            border: 2px dashed #4CAF50;
+            border-radius: 10px;
+            color: #333;
+        }
+        .signature h3 {
+            margin: 0;
+        }
+        .signature p {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1rem;
+            color: #666;
+        }
+        footer {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #777;
+            margin-top: 3rem;
+        }
+    </style>
 
-    <h3>Lease Terms:</h3>
-    <ul>
-        <li><strong>Start Date:</strong> {{ proposal.start_date }}</li>
-        <li><strong>End Date:</strong> {{ proposal.end_date }}</li>
-        <li><strong>Proposed Rent:</strong> KES {{ proposal.proposed_price }}</li>
-    </ul>
+    <div class="contract-container">
+        <div class="header">
+            <h1>The (Surprisingly Thorough) Rental Agreement</h1>
+            <p>"Because good fences make good neighbors, and good contracts make better tenants."
+        </div>
 
-    <p>By signing this agreement, both parties agree to the terms outlined above.</p>
+        <h2 class="section-title">1. The Parties Involved</h2>
+        <div class="clause">
+            This agreement is entered into by <strong>{{ landlord }}</strong> (hereinafter referred to as "The Benevolent Overlord") and <strong>{{ client }}</strong> (hereinafter referred to as "The Appreciative Dweller").
+        </div>
 
-    <hr>
+        <h2 class="section-title">2. The Property</h2>
+        <div class="clause">
+            The property under this agreement is identified as <strong>{{ property.name }}</strong>, located at <strong>{{ property.location }}</strong>. It is a <strong>{{ property.size }} sq. meter</strong> <strong>{{ property.category }}</strong> property with <strong>{{ property.beds }}</strong> bedroom(s) and <strong>{{ property.baths }}</strong> bathroom(s), designed to bring unparalleled joy and occasional laundry mishaps.
+        </div>
 
-    {% if request.user == landlord %}
-        <p>Signed by Landlord: <strong>(Signature: {{ proposal.landlord_signature }})</strong></p>
-    {% endif %}
-    {% if request.user == client %}
-        <p>Signed by Tenant: <strong>(Signature: {{ proposal.client_signature }})</strong></p>
-    {% endif %}
-</div>
+        <h2 class="section-title">3. The Lease Type</h2>
+        <div class="clause">
+            This property is offered under a <strong>{{ property.t_type }}</strong> arrangement. Whether you rent, buy, or lease, remember: with great property comes great responsibility.
+        </div>
+
+        <h2 class="section-title">4. The Rent</h2>
+        <div class="clause">
+            The tenant agrees to pay a monthly rent of <strong>KES {{ property.price }}</strong>. Payments must be made via approved methods (cash, bank transfer, M-Pesa) and will not be accepted in forms such as IOUs, Monopoly money, or "good vibes."
+        </div>
+
+        <h2 class="section-title">5. Furnishing Status</h2>
+        <div class="clause">
+            The property is provided as <strong>{{ property.furnishing_status }}</strong>. If unfurnished, the tenant is encouraged to channel their inner interior designer (but please, no neon green walls).
+        </div>
+
+        <h2 class="section-title">6. Nearby Features</h2>
+        <div class="clause">
+            The property is conveniently located near: <strong>{{ property.nearby_features }}</strong>. These features are provided as-is and cannot be altered (we cannot move the mall closer, no matter how much you ask).
+        </div>
+
+        <h2 class="section-title">7. Utilities</h2>
+        <div class="clause">
+            The following utilities are included/excluded: <strong>{{ property.utilities }}</strong>. The tenant agrees not to overload the circuits by running a hairdryer, microwave, and air conditioner simultaneously.
+        </div>
+
+        <h2 class="section-title">8. Tenant Responsibilities</h2>
+        <div class="clause">
+            - The tenant shall keep the property clean and refrain from subletting to their pet goldfish.<br>
+            - Any damages caused by "experimental cooking" must be promptly reported to the landlord.
+        </div>
+
+        <h2 class="section-title">9. Landlord Responsibilities</h2>
+        <div class="clause">
+            - The landlord will address maintenance issues promptly, provided they are not caused by tenant negligence (e.g., using the toilet as a trash can).<br>
+            - The landlord will not inspect the property without prior notice unless bringing pizza.
+        </div>
+
+        <h2 class="section-title">10. Contact Information</h2>
+        <div class="clause">
+            For emergencies, contact the landlord at <strong>{{ property.contact_number }}</strong>. Please do not use this number to send memes, unless they are particularly funny.
+        </div>
+
+        <div class="signature-section">
+            <div class="signature">
+                <h3>Client's Signature</h3>
+                <p>{{ proposal.client_signature }}</p>
+            </div>
+            <div class="signature">
+                <h3>Landlord's Signature</h3>
+                <p>{{ proposal.landlord_signature }}</p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        This agreement is legally binding. Violations will result in strongly worded texts and sad emojis.
+    </footer>
 
 {%endblock%}

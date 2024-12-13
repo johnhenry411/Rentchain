@@ -3,7 +3,8 @@ from django.contrib.auth.models import AbstractUser, Group, Permission
 import uuid
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
-
+import random
+import string
 # Assign roles to groups during setup
 def setup_roles():
     # Ensure the necessary groups exist
@@ -80,6 +81,10 @@ class Property(models.Model):
     size=models.IntegerField()
     baths=models.IntegerField()
     beds=models.IntegerField()
+    amenities = models.ManyToManyField('Amenity', blank=True, related_name='properties',default='gym')
+    contact_number = models.CharField(max_length=15, blank=True, null=True,default='0711111')
+    utilities = models.TextField(blank=True, null=True, help_text="List included utilities (e.g., water, electricity).",default='water')
+    nearby_features = models.TextField(blank=True, null=True,default='school')
 
     lease_type=[
         ('rent','Rent'),
@@ -93,12 +98,31 @@ class Property(models.Model):
         ('Office', 'office'),
         ('Garage', 'garage'),
     ]
+    STATUS_CHOICES = [
+    ('available', 'Available'),
+    ('occupied', 'Occupied'),
+    ('sold', 'Sold'),
+]
+    FURNISHING_CHOICES = [
+    ('furnished', 'Furnished'),
+    ('semi-furnished', 'Semi-Furnished'),
+    ('unfurnished', 'Unfurnished'),
+]
+    furnishing_status = models.CharField(max_length=50, choices=FURNISHING_CHOICES, default='unfurnished')
+
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='available')
+
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='apartment')
     t_type= models.CharField(max_length=50,choices=lease_type,default='rent')
 
     def __str__(self):
         return self.name
 
+class Amenity(models.Model):
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
 
 
 class PropertyImage(models.Model):
@@ -167,23 +191,22 @@ class Proposal(models.Model):
     landlord_response = models.TextField(blank=True, null=True)  # New field
     client_signature = models.CharField(max_length=255, blank=True, null=True)
     landlord_signature = models.CharField(max_length=255, blank=True, null=True)
+    
     def generate_signature(self, user):
-       
-        random_string = ''.join(random.choices(string.ascii_letters + string.digits, k=8))  # Random 8 chars
-        signature = f"{user.username}-{random_string}"
-        print(f"Generated signature: {signature}")  # Debug print
-        return signature
+        print(f"Generating signature for user: {user}")  # Debug
+        print(f"User username: {user.username if user else 'No user found'}")  # Debug
+        if not user or not user.username:
+            return "Invalid-User"
+    
+        random_string = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+        return f"{user.username}.{random_string}"
+
     def sign_contract(self):
-     
         if self.status == 'accepted':
-         print("sign_contract() method called")  # Debug statement
-        # Ensure the proposer is the client and the property has a landlord
-         if self.proposer.role == 'client' and self.property.landlord:
-            print(f"Generating signatures for client: {self.proposer.username}, landlord: {self.property.landlord.username}")  # Debug statement
             self.client_signature = self.generate_signature(self.proposer)
             self.landlord_signature = self.generate_signature(self.property.landlord)
-            print(f"Generated client signature: {self.client_signature}, landlord signature: {self.landlord_signature}")  # Debug statement
-            self.save()
-    
+            print(f"Saving signatures: {self.client_signature}, {self.landlord_signature}")  # Debug
+        self.save()
+
     def __str__(self):
         return f"Proposal by {self.proposer} for {self.property.name} - {self.proposed_price}"

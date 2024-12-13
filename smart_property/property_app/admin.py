@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User, Property, PropertyImage, Lease, Review, Profile
+from .models import User, Property, PropertyImage, Lease, Review, Profile,Proposal
 
 # Customizing the User model admin
 @admin.register(User)
@@ -48,3 +48,4 @@ class ProfileAdmin(admin.ModelAdmin):
     list_display = ['user', 'phone_number', 'address', 'updated_at']
     search_fields = ['user__username', 'phone_number', 'address']
     list_filter = ['updated_at']
+admin.site.register(Proposal)

@@ -314,13 +314,20 @@ def accept_proposal(request, proposal_id):
     return redirect('view_contract', proposal_id=proposal.id)
 
 def view_contract(request, proposal_id):
-    # Fetch the proposal using the proposal ID
     proposal = get_object_or_404(Proposal, id=proposal_id)
+
+    # Call sign_contract if signatures are missing
+    if not proposal.client_signature or not proposal.landlord_signature:
+        proposal.sign_contract() 
+
+    # Refresh from database to ensure data consistency
+    proposal.refresh_from_db()
+
     property = proposal.property
     landlord = property.landlord
     client = proposal.proposer
 
-    # Ensure that the logged-in user is either the landlord or the client involved
+    # Ensure the logged-in user is either the landlord or the client involved
     if request.user != landlord and request.user != client:
         return HttpResponseForbidden("You are not authorized to view this contract.")
 
@@ -330,9 +337,11 @@ def view_contract(request, proposal_id):
         'landlord': landlord,
         'client': client,
         'proposal': proposal,
-        # 'start_date': proposal.start_date,
-        # 'end_date': proposal.end_date,
         'lease_value': proposal.proposed_price,
     }
 
     return render(request, 'contract.html', context)
+
+
+
+ 

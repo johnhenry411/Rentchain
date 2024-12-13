@@ -32,10 +32,30 @@ class ProfileUpdateForm(forms.ModelForm):
         model = Profile
         fields = ['bio', 'profile_picture', 'phone_number', 'address']
 
+from django import forms
+from .models import Property
+
 class PropertyForm(forms.ModelForm):
     class Meta:
-        model=Property
-        fields = ['name', 'description', 'price', 'location','category','t_type','number_of_units','beds','baths','size']
+        model = Property
+        fields = [
+            'name',
+            'description',
+            'price',
+            'location',
+            'category',
+            't_type',
+            'number_of_units',
+            'beds',
+            'baths',
+            'size',
+            'status',
+            'furnishing_status',
+            'nearby_features',
+            'utilities',
+            'contact_number',
+        ]
+
         
 class PropertyImageForm(forms.ModelForm):
     class Meta:
