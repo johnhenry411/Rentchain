@@ -1,0 +1,11 @@
+parent file:
+.......applocation file
+    venv(virtual environment)
+general file name-> django preinstalled files
+app file -> url file
+            views->api
+            utils->
+            models
+        folders->
+            templates->html files
+            static->css,js,images files 

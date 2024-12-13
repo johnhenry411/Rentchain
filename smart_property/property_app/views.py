@@ -28,12 +28,13 @@ def role_required(role):
 @method_decorator(login_required, name='dispatch')
 @method_decorator(role_required('client'), name='dispatch')
 class ClientDashboardView(TemplateView):
-    template_name = 'client_dashboard.html'
-
+    template_name = 'client_dashboard.html'  # Fixed typo in 'template_name'
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['leases'] = Lease.objects.filter(tenant=self.request.user)
-        context['reviews'] = Review.objects.filter(tenant=self.request.user)
+        # context['leases'] = Lease.objects.filter(tenant=self.request.user)
+        # context['reviews'] = Review.objects.filter(tenant=self.request.user)
+        context['proposals'] = Proposal.objects.filter(proposer=self.request.user).select_related('property')
         return context
 
 
@@ -140,42 +141,73 @@ def update_profile(request):
 @method_decorator(login_required, name='dispatch')
 @method_decorator(role_required('landlord'), name='dispatch')
 class LandlordDashboardView(View):
-    
-    def get(self, request, *args, **kwargs):
-        if getattr(request.user, 'role', None) != 'landlord':
-            return redirect('login')
 
+    def get(self, request, *args, **kwargs):
+        # Fetch landlord properties and proposals
         properties = Property.objects.filter(landlord=request.user)
-        PropertyImageFormSet = modelformset_factory(PropertyImage, form=PropertyImageForm, extra=3)
         proposals = Proposal.objects.filter(property__in=properties).select_related('proposer', 'property')
 
+        # Create property image formset
+        PropertyImageFormSet = modelformset_factory(PropertyImage, form=PropertyImageForm, extra=3)
         property_form = PropertyForm()
         image_formset = PropertyImageFormSet(queryset=PropertyImage.objects.none())
 
         return render(request, 'landlord_dashboard.html', {
             'properties': properties,
+            'proposals': proposals,
             'property_form': property_form,
             'image_formset': image_formset,
-             'proposals':proposals,
-
         })
 
     def post(self, request, *args, **kwargs):
-        # Check if the user is a landlord
-        if getattr(request.user, 'role', None) != 'landlord':
-            return redirect('login')
+        action = request.POST.get('action')
+        print(f"DEBUG: Action received in POST: {action}")  # Debugging
+        if action == 'proposal_response':
+                return self.handle_proposal_response(request)
+        elif action == 'add_property':
+                return self.handle_add_property(request)
+        return redirect('landlord_dashboard')
 
+
+    def handle_proposal_response(self, request):
+        print("DEBUG: handle_proposal_response called.")
+        proposal_id = request.POST.get('proposal_id')
+        response_action = request.POST.get('response_action')
+        response_message = request.POST.get('response_message', '')
+
+        print(f"DEBUG: Proposal ID: {proposal_id}, Action: {response_action}, Response: {response_message}")
+
+        proposal = get_object_or_404(Proposal, id=proposal_id)
+
+        if response_action == 'accept':
+                proposal.status = 'accepted'
+        elif response_action == 'reject':
+                proposal.status = 'rejected'
+
+        proposal.landlord_response = response_message
+        proposal.save()
+
+        messages.success(request, f"Proposal has been {response_action}ed successfully.")
+        return HttpResponseRedirect(request.path)
+
+
+
+
+
+
+    def handle_add_property(self, request):
+        # Initialize forms
         PropertyImageFormSet = modelformset_factory(PropertyImage, form=PropertyImageForm, extra=3)
         property_form = PropertyForm(request.POST)
         image_formset = PropertyImageFormSet(request.POST, request.FILES, queryset=PropertyImage.objects.none())
 
         if property_form.is_valid() and image_formset.is_valid():
-            # Save the property instance
+            # Save property
             property_instance = property_form.save(commit=False)
             property_instance.landlord = request.user
             property_instance.save()
 
-            # Save the images
+            # Save associated images
             for form in image_formset:
                 if form.cleaned_data and form.cleaned_data.get('image'):
                     image = form.save(commit=False)
@@ -187,13 +219,16 @@ class LandlordDashboardView(View):
         else:
             messages.error(request, "Please correct the errors below.")
 
+        # If invalid, re-render with errors
         properties = Property.objects.filter(landlord=request.user)
+        proposals = Proposal.objects.filter(property__in=properties).select_related('proposer', 'property')
         return render(request, 'landlord_dashboard.html', {
             'properties': properties,
+            'proposals': proposals,
             'property_form': property_form,
             'image_formset': image_formset,
-            'proporsals':proporsals,
         })
+
 
 # Edit Property View
 @method_decorator(login_required, name='dispatch')
@@ -264,3 +299,40 @@ def submit_proposal(request, property_id):
     else:
         form = ProposalForm()
     return render(request, 'submit_proposal.html', {'form': form, 'property': property})
+
+def accept_proposal(request, proposal_id):
+    proposal = get_object_or_404(Proposal, id=proposal_id)
+    
+    proposal.status = 'accepted'
+    
+    proposal.sign_contract()
+    
+    # Save the proposal
+    proposal.save()
+
+    # Redirect to the contract view
+    return redirect('view_contract', proposal_id=proposal.id)
+
+def view_contract(request, proposal_id):
+    # Fetch the proposal using the proposal ID
+    proposal = get_object_or_404(Proposal, id=proposal_id)
+    property = proposal.property
+    landlord = property.landlord
+    client = proposal.proposer
+
+    # Ensure that the logged-in user is either the landlord or the client involved
+    if request.user != landlord and request.user != client:
+        return HttpResponseForbidden("You are not authorized to view this contract.")
+
+    # Prepare contract data
+    context = {
+        'property': property,
+        'landlord': landlord,
+        'client': client,
+        'proposal': proposal,
+        # 'start_date': proposal.start_date,
+        # 'end_date': proposal.end_date,
+        'lease_value': proposal.proposed_price,
+    }
+
+    return render(request, 'contract.html', context)

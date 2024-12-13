@@ -152,11 +152,38 @@ class Profile(models.Model):
         return f"{self.user.username}'s Profile"
 
 class Proposal(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+    ]
+    
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='proposals')
     proposer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='proposals')
     proposed_price = models.DecimalField(max_digits=10, decimal_places=2)
-    message = models.TextField(blank=True, null=True)  # Optional field for additional comments
+    message = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')  # New field
+    landlord_response = models.TextField(blank=True, null=True)  # New field
+    client_signature = models.CharField(max_length=255, blank=True, null=True)
+    landlord_signature = models.CharField(max_length=255, blank=True, null=True)
+    def generate_signature(self, user):
+       
+        random_string = ''.join(random.choices(string.ascii_letters + string.digits, k=8))  # Random 8 chars
+        signature = f"{user.username}-{random_string}"
+        print(f"Generated signature: {signature}")  # Debug print
+        return signature
+    def sign_contract(self):
+     
+        if self.status == 'accepted':
+         print("sign_contract() method called")  # Debug statement
+        # Ensure the proposer is the client and the property has a landlord
+         if self.proposer.role == 'client' and self.property.landlord:
+            print(f"Generating signatures for client: {self.proposer.username}, landlord: {self.property.landlord.username}")  # Debug statement
+            self.client_signature = self.generate_signature(self.proposer)
+            self.landlord_signature = self.generate_signature(self.property.landlord)
+            print(f"Generated client signature: {self.client_signature}, landlord signature: {self.landlord_signature}")  # Debug statement
+            self.save()
+    
     def __str__(self):
         return f"Proposal by {self.proposer} for {self.property.name} - {self.proposed_price}"

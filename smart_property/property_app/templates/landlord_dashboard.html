@@ -95,32 +95,56 @@
         <button class="btn btn-success" type="submit">Submit</button>
     </form>
 </div>
-
-<div class="container">
-    <h2>Your Proposals</h2>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Property</th>
-                <th>Proposed Price</th>
-                <th>Proposer</th>
-                <th>Message</th>
-                <th>Date</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for proposal in proposals %}
-            <tr>
-                <td>{{ proposal.property.name }}</td>
-                <td>KSH. {{ proposal.proposed_price }}</td>
-                <td>{{ proposal.proposer.username }}</td>
-                <td>{{ proposal.message }}</td>
-                <td>{{ proposal.created_at }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Property</th>
+            <th>Proposed Price</th>
+            <th>Proposer</th>
+            <th>Message</th>
+            <th>Status</th>
+            <th>Response</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for proposal in proposals %}
+        <tr>
+            <td>{{ proposal.property.name }}</td>
+            <td>KSH. {{ proposal.proposed_price }}</td>
+            <td>{{ proposal.proposer.username }}</td>
+            <td>{{ proposal.message }}</td>
+            <td>{% if proposal.status == 'accepted' %}
+                <a href="{% url 'view_contract' proposal.id %}" class="btn btn-primary btn-sm">View Contract</a>
+            {% endif %}
+            </td>
+            <td>
+                <span class="badge 
+                {% if proposal.status == 'accepted' %}bg-success
+                {% elif proposal.status == 'rejected' %}bg-danger
+                {% else %}bg-warning
+                {% endif %}">
+                {{ proposal.status }}
+            </span>
+            </td>
+            <td>{{ proposal.landlord_response }}</td>
+            <td>
+                {% if proposal.status == 'pending' %}
+                <form method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="proposal_response">
+                    <input type="hidden" name="proposal_id" value="{{ proposal.id }}">
+                    <textarea name="response_message" placeholder="Add a response" class="form-control mb-2"></textarea>
+                    <button type="submit" name="response_action" value="accept" class="btn btn-success btn-sm">Accept</button>
+                    <button type="submit" name="response_action" value="reject" class="btn btn-danger btn-sm">Reject</button>
+                </form>
+                
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 <style>
     .wrapper{
         display:flex;
