@@ -3,18 +3,21 @@ from django.http import HttpResponseRedirect
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
-from .forms import SignUpForm
+from .forms import SignUpForm,WalletForm
 from django.shortcuts import render, redirect
 from django.http import HttpResponseForbidden
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
-from .models import User,Lease,Property, PropertyImage, Proposal
+from .models import User,Lease,Property, PropertyImage, Proposal,Transaction,Wallet
 from property_app.utils import get_dashboard_url
-from .forms import ProfileUpdateForm,PropertyForm, PropertyImageForm,ProposalForm
+from .forms import ProfileUpdateForm,PropertyForm, PropertyImageForm,ProposalForm  
 from django.forms import modelformset_factory
 from django.views import View
 from django.contrib import messages
 from django.db.models import Prefetch
+from decimal import Decimal
+import uuid
+from django.db.models import Q
 
 def role_required(role):
     def decorator(view_func):
@@ -343,5 +346,161 @@ def view_contract(request, proposal_id):
     return render(request, 'contract.html', context)
 
 
+@login_required
+def initiate_transaction(request):
+    if request.method == 'POST':
+        receiver_username = request.POST.get('receiver')
+        try:
+            amount = Decimal(request.POST.get('amount'))
+            if amount <= 0:
+                raise ValueError("Invalid transaction amount.")
+        except (ValueError, TypeError):
+            return render(request, 'transaction_status.html', {
+                'message': "Transaction Failed: Invalid amount.",
+                'transaction': None
+            })
 
- 
+        # Get password confirmation from user
+        password = request.POST.get('password')
+        
+        # Check if the password matches the user's actual password
+        user = authenticate(username=request.user.username, password=password)
+        if not user:
+            return render(request, 'transaction_status.html', {
+                'message': "Transaction Failed: Incorrect password. Please try again.",
+                'transaction': None
+            })
+        
+        # Try to fetch the receiver
+        try:
+            receiver = User.objects.get(username=receiver_username)
+        except User.DoesNotExist:
+            # Handle receiver not found
+            return render(request, 'transaction_status.html', {
+                'message': f"Transaction Failed: Receiver '{receiver_username}' does not exist.",
+                'transaction': None
+            })
+
+        # Ensure sender and receiver have wallets
+        sender_wallet, _ = Wallet.objects.get_or_create(user=request.user, defaults={"balance": Decimal("0.00")})
+        receiver_wallet, _ = Wallet.objects.get_or_create(user=receiver, defaults={"balance": Decimal("0.00")})
+
+        # Check sender's balance
+        if sender_wallet.balance >= amount:
+            # Perform the transaction
+            sender_wallet.balance -= amount
+            receiver_wallet.balance += amount
+            sender_wallet.save()
+            receiver_wallet.save()
+
+            # Log the transaction
+            transaction = Transaction.objects.create(
+                sender=request.user,
+                receiver=receiver,
+                amount=amount,
+                reference=f"TXN-{uuid.uuid4().hex[:8].upper()}",
+                status='completed'
+            )
+            message = "Transaction Successful"
+        else:
+            # Log insufficient funds
+            transaction = Transaction.objects.create(
+                sender=request.user,
+                receiver=receiver,
+                amount=amount,
+                reference=f"TXN-{uuid.uuid4().hex[:8].upper()}",
+                status='failed'
+            )
+            message = "Transaction Failed: Insufficient Funds"
+
+        return render(request, 'transaction_status.html', {'transaction': transaction, 'message': message})
+
+    return render(request, 'transaction_form.html')
+
+
+
+# View details of the wallet
+@login_required
+def wallet_detail(request):
+    try:
+        wallet = Wallet.objects.get(user=request.user)
+    except Wallet.DoesNotExist:
+        wallet = None  # Handle if no wallet exists for this user
+
+    return render(request, 'wallet_detail.html', {'wallet': wallet})
+
+from django.contrib.auth.decorators import user_passes_test
+
+@user_passes_test(lambda u: u.is_superuser)
+def create_wallet(request):
+    if request.method == 'POST':
+        # Get the user ID from the form
+        user_id = request.POST.get('user_id')
+        
+        try:
+            # Ensure the user exists
+            user = User.objects.get(id=user_id)
+            
+            # Check if the user already has a wallet
+            wallet, created = Wallet.objects.get_or_create(user=user)
+            
+            if not created:
+                return render(request, 'index.html', {'message': f"Wallet already exists for {user.username}."})
+            
+            # If wallet is successfully created
+            return redirect('wallet_detail', user_id=user.id)
+        
+        except User.DoesNotExist:
+            return render(request, 'index.html', {'message': 'User does not exist.'})
+    
+    return render(request, 'create_wallet.html')
+
+from django.shortcuts import render
+from django.db.models import Q
+from .models import Transaction
+
+def transaction_history(request):
+    user = request.user
+    transactions = Transaction.objects.filter(Q(sender=user) | Q(receiver=user)).order_by('-timestamp')
+
+    transaction_messages = []
+    current_balance = user.wallet.balance
+
+    for transaction in transactions:
+        if transaction.status == 'completed':  # Only show completed transactions
+            if transaction.sender == user:
+                # Calculate balance for sent transactions
+                balance = current_balance - transaction.amount
+                transaction_messages.append({
+                    'type': 'sent',
+                    'message':f"🚀 Woohoo! Transaction {transaction.reference} confirmed! KSH.{transaction.amount} just made its way to "
+f"{transaction.receiver.username} on {transaction.timestamp.strftime('%Y-%m-%d %H:%M:%S')}. Your balance is "
+f"still looking fine at {balance} KSH! Keep those transactions rolling! 💸🎉"
+
+                })
+            elif transaction.receiver == user:
+                # Calculate balance for received transactions
+                balance = current_balance + transaction.amount
+                transaction_messages.append({
+                    'type': 'received',
+                    'message':f"Boom! 🎉 Transaction {transaction.reference} confirmed! You’ve just received KSH.{transaction.amount} from "
+f"{transaction.sender.username} on {transaction.timestamp.strftime('%Y-%m-%d %H:%M:%S')}. "
+f"Your balance is now looking pretty: {balance} KSH! Keep the party going! 💸💃🕺"
+
+                })
+            # Update the running balance to reflect the completed transaction
+            current_balance = balance
+        else:
+            # For failed transactions, display a simple message
+            transaction_messages.append({
+                'type': 'failed',
+                'message': f"Oops! 😬 Failed transaction {transaction.reference}! KSH.{transaction.amount} tried to reach "
+f"{transaction.receiver.username} on {transaction.timestamp.strftime('%Y-%m-%d %H:%M:%S')}, but alas... "
+f"Transaction failed. Looks like we’ll have to try again! 💔💸"
+
+            })
+
+    context = {
+        'transaction_messages': transaction_messages,
+    }
+    return render(request, 'transaction_history.html', context)

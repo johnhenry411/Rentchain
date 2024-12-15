@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User, Property, PropertyImage, Lease, Review, Profile,Proposal
+from .models import User, Property, PropertyImage, Lease, Review, Profile,Proposal,Wallet,Transaction
 
 # Customizing the User model admin
 @admin.register(User)
@@ -49,3 +49,34 @@ class ProfileAdmin(admin.ModelAdmin):
     search_fields = ['user__username', 'phone_number', 'address']
     list_filter = ['updated_at']
 admin.site.register(Proposal)
+
+from django.core.exceptions import ValidationError
+
+
+
+from django.contrib import admin
+from .models import Wallet
+
+class WalletAdmin(admin.ModelAdmin):
+    list_display = ('user', 'balance')
+    actions = ['add_funds']
+
+    # Action to add funds to a user's wallet
+    def add_funds(self, request, queryset):
+        for wallet in queryset:
+            # Example: Add 100.00 to the selected wallets
+            wallet.balance += 100.00
+            wallet.save()
+        self.message_user(request, "Funds have been added to the selected wallets.")
+
+    add_funds.short_description = "Add Funds"
+
+admin.site.register(Wallet, WalletAdmin)
+
+
+@admin.register(Transaction)
+class TransactionAdmin(admin.ModelAdmin):
+    list_display = ['reference', 'amount', 'sender', 'receiver', 'status', 'timestamp']
+    search_fields = ['reference', 'amount', 'sender', 'receiver', 'status', 'timestamp']
+    list_filter = ['reference', 'amount', 'sender', 'receiver']
+    ordering = ['timestamp']

@@ -1,42 +1,51 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container">
-    <h2>Your Proposals</h2>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Property</th>
-                <th>Proposed Price</th>
-                <th>Status</th>
-                <th>Landlord's Response</th>
-                <th>Date</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for proposal in proposals %}
-            <tr>
-                <td>{{ proposal.property.name }}</td>
-                <td>KSH. {{ proposal.proposed_price }}</td>
-                <td>
-                    <span class="badge 
-                    {% if proposal.status == 'accepted' %}bg-success
-                    {% elif proposal.status == 'rejected' %}bg-danger
-                    {% else %}bg-warning
-                    {% endif %}">
-                    {{ proposal.status }}
-                </span>
-                </td>
-                <td>{{ proposal.landlord_response }}</td>
-                <td>{{ proposal.created_at }}</td>
-                <td>{% if proposal.status == 'accepted' %}
-                    <a href="{% url 'view_contract' proposal.id %}" class="btn btn-primary btn-sm">View Contract</a>
-                {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+<div class="container mt-5">
+    <h2 class="mb-4">Your Proposals</h2>
+    
+    <div class="mb-4">
+        <a href="{% url 'wallet_detail' %}" class="btn btn-info btn-lg">View Wallet</a>
+        <a href="{% url 'initiate_transaction' %}" class="btn btn-primary btn-lg ml-3">Initiate Transaction</a>
+    </div>
 
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped">
+            <thead class="thead-dark">
+                <tr>
+                    <th>Property</th>
+                    <th>Proposed Price</th>
+                    <th>Status</th>
+                    <th>Landlord's Response</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for proposal in proposals %}
+                <tr>
+                    <td>{{ proposal.property.name }}</td>
+                    <td>KSH. {{ proposal.proposed_price }}</td>
+                    <td>
+                        <span class="badge 
+                            {% if proposal.status == 'accepted' %}bg-success
+                            {% elif proposal.status == 'rejected' %}bg-danger
+                            {% else %}bg-warning
+                            {% endif %}">
+                            {{ proposal.status }}
+                        </span>
+                    </td>
+                    <td>{{ proposal.landlord_response }}</td>
+                    <td>{{ proposal.created_at|date:"M d, Y" }}</td>
+                    <td>
+                        {% if proposal.status == 'accepted' %}
+                        <a href="{% url 'view_contract' proposal.id %}" class="btn btn-success btn-sm">View Contract</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}

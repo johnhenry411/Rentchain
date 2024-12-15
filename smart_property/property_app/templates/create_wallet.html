@@ -1,0 +1,19 @@
+<!-- templates/property_app/create_wallet.html -->
+
+{% extends 'base.html' %}
+
+{% block content %}
+  <h2>Create Wallet</h2>
+  
+  <form method="post">
+    {% csrf_token %}
+    <label for="user_id">User ID:</label>
+    <input type="number" name="user_id" id="user_id" required>
+    
+    <button type="submit">Create Wallet</button>
+  </form>
+
+  {% if message %}
+    <p>{{ message }}</p>
+  {% endif %}
+{% endblock %}

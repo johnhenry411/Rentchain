@@ -73,7 +73,12 @@
             <h1>The (Surprisingly Thorough) Rental Agreement</h1>
             <p>"Because good fences make good neighbors, and good contracts make better tenants."
         </div>
-
+        {% if show_payment_button %}
+        <form action="{% url 'make_payment' contract.id %}" method="post">
+            {% csrf_token %}
+            <button type="submit">Pay Now</button>
+        </form>
+    {% endif %}
         <h2 class="section-title">1. The Parties Involved</h2>
         <div class="clause">
             This agreement is entered into by <strong>{{ landlord }}</strong> (hereinafter referred to as "The Benevolent Overlord") and <strong>{{ client }}</strong> (hereinafter referred to as "The Appreciative Dweller").

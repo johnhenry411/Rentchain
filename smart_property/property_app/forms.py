@@ -70,3 +70,12 @@ class ProposalForm(forms.ModelForm):
             'proposed_price': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Propose your price'}),
             'message': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Leave a message (optional)'}),
         }
+        
+from django import forms
+from .models import Wallet
+from property_app.models import User
+
+class WalletForm(forms.ModelForm):
+    class Meta:
+        model = Wallet
+        fields = ['balance']

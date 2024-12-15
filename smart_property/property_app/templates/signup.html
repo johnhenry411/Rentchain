@@ -38,7 +38,7 @@
                     <select name="role" class="form-select" id="role" required>
                         <option value="client" {% if form.role.value == "client" %} selected {% endif %}>Client</option>
                         <option value="landlord" {% if form.role.value == "landlord" %} selected {% endif %}>Landlord</option>
-                        <option value="admin" {% if form.role.value == "admin" %} selected {% endif %}>Admin</option>
+                        {% comment %} <option value="admin" {% if form.role.value == "admin" %} selected {% endif %}>Admin</option> {% endcomment %}
                     </select>
                     {{ form.role.errors }}
                 </div>

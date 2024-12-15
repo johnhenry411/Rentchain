@@ -5,6 +5,8 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
 import random
 import string
+from decimal import Decimal
+
 # Assign roles to groups during setup
 def setup_roles():
     # Ensure the necessary groups exist
@@ -19,17 +21,17 @@ def setup_roles():
     client_group.permissions.add(view_property_permission)
 
 
-from django.db import models
-from django.contrib.auth.models import AbstractUser, Group, Permission
+
 
 class User(AbstractUser):
+    # Role choices
     ROLES = [
         ('client', 'Client'),
         ('landlord', 'Landlord'),
         ('admin', 'Admin'),
     ]
-
     role = models.CharField(max_length=10, choices=ROLES, default='client')
+    wallet_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
     # Custom related names for avoiding clashes with the default fields in AbstractUser
     groups = models.ManyToManyField(
@@ -43,30 +45,51 @@ class User(AbstractUser):
         blank=True,
     )
 
-    def __str__(self):
-        return self.username
-
     def is_client(self):
+        """
+        Check if the user is in the 'Clients' group.
+        """
         return self.groups.filter(name='Clients').exists()
 
     def is_landlord(self):
+        """
+        Check if the user is in the 'Landlords' group.
+        """
         return self.groups.filter(name='Landlords').exists()
 
     def is_admin(self):
+        """
+        Check if the user is in the 'Admins' group.
+        """
         return self.groups.filter(name='Admins').exists()
 
     def setup_roles(self):
+        """
+        Assign the user to a group based on their role.
+        """
         if self.role == 'client':
             client_group, _ = Group.objects.get_or_create(name='Clients')
             self.groups.add(client_group)
-        if self.role == 'landlord':
+        elif self.role == 'landlord':
             landlord_group, _ = Group.objects.get_or_create(name='Landlords')
             self.groups.add(landlord_group)
-        if self.role == 'admin':
+        elif self.role == 'admin':
             admin_group, _ = Group.objects.get_or_create(name='Admins')
             self.groups.add(admin_group)
         
         self.save()
+
+    @property
+    def wallet(self):
+        wallet, _ = Wallet.objects.get_or_create(user=self)
+        return wallet
+
+    def save(self, *args, **kwargs):
+        is_new_user = self.pk is None  # Check if the user is being created
+        super().save(*args, **kwargs)  # Save the user
+        if is_new_user:
+            Wallet.objects.get_or_create(user=self)
+
 
 
 
@@ -210,3 +233,65 @@ class Proposal(models.Model):
 
     def __str__(self):
         return f"Proposal by {self.proposer} for {self.property.name} - {self.proposed_price}"
+class Wallet(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,  # Ensures wallet is deleted when user is deleted
+        related_name='wallet'
+    )
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=3000000.0)
+
+    def __str__(self):
+        return f"{self.user.username}'s Wallet - Balance: {self.balance}"
+
+from django.db import models
+from django.db import transaction
+import uuid
+
+class Transaction(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('in_progress', 'In Progress'),
+    ]
+
+    sender = models.ForeignKey(User, related_name='sent_transactions', on_delete=models.CASCADE)
+    receiver = models.ForeignKey(User, related_name='received_transactions', on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    reference = models.CharField(max_length=50, unique=True)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending')
+    timestamp = models.DateTimeField(auto_now_add=True)
+    def save(self, *args, **kwargs):
+        # Automatically generate a unique reference if not provided
+        if not self.reference:
+            self.reference = str(uuid.uuid4())
+        super().save(*args, **kwargs)
+
+    def process_transaction(self):
+        sender_wallet = self.sender.wallet
+        receiver_wallet = self.receiver.wallet
+
+        if sender_wallet is None or receiver_wallet is None:
+            self.status = 'failed'
+            self.save()
+            return
+
+        if sender_wallet.balance < self.amount:
+            self.status = 'failed'
+            self.save()
+            return
+
+        try:
+            with transaction.atomic():
+                sender_wallet.balance -= self.amount
+                receiver_wallet.balance += self.amount
+                sender_wallet.save()
+                receiver_wallet.save()
+                self.status = 'completed'
+                self.save()
+        except Exception as e:
+            self.status = 'failed'
+            self.save()
+            raise e
+

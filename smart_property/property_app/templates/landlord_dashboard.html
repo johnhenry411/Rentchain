@@ -12,8 +12,10 @@
                             <h6>
                             your email:  {{ request.user.email}}
                             </h6>
-                           
-
+                            <div class="mb-4">
+                                <a href="{% url 'wallet_detail' %}" class="btn btn-info btn-lg">View Wallet</a>
+                                <a href="{% url 'initiate_transaction' %}" class="btn btn-primary btn-lg ml-3">Initiate Transaction</a>
+                            </div>
 
 <h1 style="text-align: center;margin-top:40px">your properties</h1>
 {% if properties%}

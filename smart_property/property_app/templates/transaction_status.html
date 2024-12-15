@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{%block content%}
+<h1>Transaction Status</h1>
+{% if transaction %}
+<div class="status-page">
+    <div class="status-card {% if transaction.status == 'completed' %}success{% else %}failed{% endif %}">
+        <h1>{% if transaction.status == 'completed' %}✅ Transaction Successful{% else %}❌ Transaction Failed{% endif %}</h1>
+        <div class="status-details">
+            <p>Transaction ID: {{ transaction.reference }}</p>
+            <p>Amount: {{ transaction.amount }}</p>
+            <p>Sender: {{ transaction.sender }}</p>
+            <p>Receiver: {{ transaction.receiver }}</p>
+            <p>Date & Time: {{ transaction.timestamp }}</p>
+            <p>Status: {{ transaction.status }}</p>
+        </div>
+        <div class="actions">
+            <a href="/transaction-history" class="btn">Back to Transactions</a>
+            <a href="/download-receipt/{{ transaction.id }}/" class="btn secondary">Download Receipt</a>
+        </div>
+    </div>
+</div>
+{%else%}
+<h1>invalid user</h1>
+{% endif %}
+
+<style>
+    .btn {
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: #fff;
+        border-radius: 5px;
+        text-align: center;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+    
+    .btn:hover {
+        background-color: #0056b3;
+    }
+    
+    .btn.secondary {
+        background-color: #6c757d;
+    }
+    
+    .btn.secondary:hover {
+        background-color: #5a6268;
+    }
+    /* Transaction Status Page */
+    .status-page {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background-color: #f4f4f9;
+        padding: 20px;
+    }
+    
+    .status-card {
+        width: 90%;
+        max-width: 500px;
+        background: #fff;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .status-card.success {
+        border-top: 5px solid #28a745;
+    }
+    
+    .status-card.failed {
+        border-top: 5px solid #dc3545;
+    }
+    
+    .status-card h1 {
+        margin-bottom: 20px;
+    }
+    
+    .status-details p {
+        margin: 10px 0;
+        font-size: 0.9rem;
+    }
+    
+    .actions {
+        margin-top: 20px;
+    }
+    
+    .actions .btn {
+        margin: 5px;
+    }
+  
+</style>
+{%endblock%}

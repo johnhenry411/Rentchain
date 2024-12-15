@@ -1,0 +1,272 @@
+
+{%extends 'base.html'%}
+{% load static %}
+
+{%block content%}
+<div class="transaction-page">
+    <div class="transaction-left">
+        <img src="{% static 'img/20943648.jpg' %}" alt="Wallet Animation">
+        <h2>Transfer Money Seamlessly</h2>
+    </div>
+    <div class="transaction-right">
+        <form id="transaction-form" action="/transaction/" method="POST">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="receiver">Receiver Username:</label>
+                <input type="text" name="receiver" id="receiver" placeholder="Enter receiver's username" required>
+            </div>
+            <div class="form-group">
+                <label for="amount">Amount:</label>
+                <input type="number" name="amount" id="amount" placeholder="Enter amount" required>
+                <small>Your Balance: Ksh {{ request.user.wallet.balance }}</small>
+            </div>
+            <button type="button" id="send-money-btn" class="btn">Send Money</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal for Password Confirmation -->
+<div id="password-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" id="close-modal">&times;</span>
+        <form id="password-form">
+            <div class="form-group">
+                <label for="password">Enter Your Password to complete transaction:</label>
+                <input type="password" name="password" id="password" placeholder="password.." required>
+            </div>
+            <button type="submit" class="btn">Confirm</button>
+        </form>
+    </div>
+</div>
+
+<script>
+// Get the modal and elements
+var modal = document.getElementById("password-modal");
+var sendMoneyBtn = document.getElementById("send-money-btn");
+var closeModal = document.getElementById("close-modal");
+var passwordForm = document.getElementById("password-form");
+var passwordInput = document.getElementById("password");
+var transactionForm = document.getElementById("transaction-form");
+
+// When the user clicks the "Send Money" button, show the modal
+sendMoneyBtn.onclick = function() {
+    modal.style.display = "block";
+};
+
+// When the user clicks the "x" button, close the modal
+closeModal.onclick = function() {
+    modal.style.display = "none";
+};
+
+// When the user submits the password form
+passwordForm.onsubmit = function(event) {
+    event.preventDefault();
+
+    // Get the entered password
+    var password = passwordInput.value;
+
+    // Add the password to the transaction form before submitting
+    var passwordField = document.createElement('input');
+    passwordField.type = 'hidden';
+    passwordField.name = 'password';
+    passwordField.value = password;
+    transactionForm.appendChild(passwordField);
+
+    // Submit the transaction form
+    transactionForm.submit();
+
+    // Close the modal after submission
+    modal.style.display = "none";
+};
+
+// Close the modal if the user clicks anywhere outside of the modal
+window.onclick = function(event) {
+    if (event.target === modal) {
+        modal.style.display = "none";
+    }
+};
+</script>
+<style>
+    /* styles.css */
+
+/* General Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    background-color: #f4f4f9;
+    color: #333;
+}
+
+h1, h2, p {
+    margin: 0;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: #fff;
+    border-radius: 5px;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn:hover {
+    background-color: #0056b3;
+}
+
+.btn.secondary {
+    background-color: #6c757d;
+}
+
+.btn.secondary:hover {
+    background-color: #5a6268;
+}
+
+/* Initiate Transaction Page */
+.transaction-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.transaction-left {
+    flex: 1;
+    text-align: center;
+    padding: 20px;
+}
+
+.transaction-left img {
+    max-width: 100%;
+    height: auto;
+}
+
+.transaction-left h2 {
+    margin-top: 20px;
+    color: #007bff;
+}
+
+.transaction-right {
+    flex: 1;
+    background: #fff;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+input[type="text"],
+input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* Transaction History Page */
+.history-page {
+    padding: 20px;
+}
+
+.filter-buttons {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.filter-buttons button {
+    margin: 0 5px;
+    padding: 10px 15px;
+    background: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.filter-buttons button:hover {
+    background-color: #0056b3;
+}
+
+.transaction-timeline {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.transaction-bubble {
+    margin: 10px 0;
+    padding: 15px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+
+.transaction-bubble.sent {
+    background-color: #e9f5ff;
+    border-left: 5px solid #007bff;
+}
+
+.transaction-bubble.received {
+    background-color: #d4edda;
+    border-left: 5px solid #28a745;
+}
+
+/* Modal Styles */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed;
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0, 0, 0, 0.4); /* Black with opacity */
+    padding-top: 60px;
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 400px;
+}
+
+.close-btn {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close-btn:hover,
+.close-btn:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+</style>
+{%endblock%}
