@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Manage Properties</h1>
+
+    <!-- Property List Grid -->
+    <div class="row">
+        {% if properties %}
+            {% for property in properties %}
+                <div class="col-md-4 mb-4">
+                    <!-- Property Card -->
+                    <div class="card shadow-sm border-light rounded">
+                        <img src="{% if property.images.first %}{{ property.images.first.image.url }}{% else %}{{ 'default-image.jpg' }}{% endif %}" class="card-img-top" alt="{{ property.name }}">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ property.name }}</h5>
+                            <p class="card-text">
+                                <strong>Location:</strong> {{ property.location }}<br>
+                                <strong>Price:</strong> Ksh {{ property.price }}<br>
+                                <strong>Status:</strong> 
+                                {% if property.status == 'available' %}
+                                    <span class="badge badge-success">{{ property.status|title }}</span>
+                                {% else %}
+                                    <span class="badge badge-danger">{{ property.status|title }}</span>
+                                {% endif %}
+                            </p>
+                            
+
+                            <!-- Action Buttons -->
+                            <div class="d-flex justify-content-between">
+                                <a href="{% url 'property_edit' property.id %}" class="btn btn-warning btn-sm" data-toggle="tooltip" title="Edit Property"><i class="fas fa-edit"></i> Edit</a>
+                                <a href="#" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#deleteModal{{ property.pk }}" data-toggle="tooltip" title="Delete Property"><i class="fas fa-trash-alt"></i> Delete</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Delete Confirmation Modal -->
+                <div class="modal fade" id="deleteModal{{ property.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel{{ property.pk }}" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="deleteModalLabel{{ property.id }}">Confirm Deletion</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                Are you sure you want to delete the property "<strong>{{ property.name }}</strong>" located at {{ property.location }}?
+                            </div>
+                            <div class="modal-footer">
+                                <form method="POST" action="{% url 'property_delete' property.id %}">
+                                    {% csrf_token %}
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info" role="alert">
+                    No properties available to manage.
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+<!-- Optional: Add FontAwesome for icons -->
+{% block extra_head %}
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        // Initialize Bootstrap tooltips
+        $(function () {
+            $('[data-toggle="tooltip"]').tooltip()
+        });
+    </script>
+{% endblock %}

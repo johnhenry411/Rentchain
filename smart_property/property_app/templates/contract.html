@@ -73,12 +73,9 @@
             <h1>The (Surprisingly Thorough) Rental Agreement</h1>
             <p>"Because good fences make good neighbors, and good contracts make better tenants."
         </div>
-        {% if show_payment_button %}
-        <form action="{% url 'make_payment' contract.id %}" method="post">
-            {% csrf_token %}
-            <button type="submit">Pay Now</button>
-        </form>
-    {% endif %}
+        <p>Payment Status: {{ contract.payment_status }}</p>
+
+
         <h2 class="section-title">1. The Parties Involved</h2>
         <div class="clause">
             This agreement is entered into by <strong>{{ landlord }}</strong> (hereinafter referred to as "The Benevolent Overlord") and <strong>{{ client }}</strong> (hereinafter referred to as "The Appreciative Dweller").
@@ -130,17 +127,27 @@
         <div class="clause">
             For emergencies, contact the landlord through <strong>{{ property.contact_number }}</strong>. Please do not use this number to send memes, unless they are particularly funny.
         </div>
+                <div class="signature-section">
+    <div class="signature">
+        <h3>Client's Signature</h3>
+        {% if contract.client_signature %}
+            <p>{{ contract.client_signature }}</p>
+        {% else %}
+            <p>Signature not provided</p>
+        {% endif %}
+    </div>
+    <div class="signature">
+        <h3>Landlord's Signature</h3>
+        {% if contract.landlord_signature %}
+            <p>{{ contract.landlord_signature }}</p>
+        {% else %}
+            <p>Signature not provided</p>
+        {% endif %}
+        <P>{{contract.start_date}}</P>
+    </div>
+</div>
 
-        <div class="signature-section">
-            <div class="signature">
-                <h3>Client's Signature</h3>
-                <p>{{ proposal.client_signature }}</p>
-            </div>
-            <div class="signature">
-                <h3>Landlord's Signature</h3>
-                <p>{{ proposal.landlord_signature }}</p>
-            </div>
-        </div>
+               
     </div>
 
     <footer>

@@ -1,6 +1,7 @@
 from django import forms
 from .models import User,Property,PropertyImage,Proposal
-
+from .models import Proposal, Contract
+from datetime import date, timedelta
 from django.contrib.auth.forms import AuthenticationForm
 
 class SignUpForm(forms.ModelForm):
@@ -9,7 +10,7 @@ class SignUpForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'role']
+        fields = ['username','first_name','last_name', 'email', 'password', 'role']
 
     def clean(self):
         cleaned_data = super().clean()
@@ -19,7 +20,7 @@ class SignUpForm(forms.ModelForm):
             self.add_error('confirm_password', "Passwords do not match!")
 class CustomLoginForm(AuthenticationForm):
     username = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter your username'})
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'A unique name to be used for transactions'})
     )
     password = forms.CharField(
         widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Enter your password'})
@@ -63,13 +64,60 @@ class PropertyImageForm(forms.ModelForm):
         fields = ['image']
         
 class ProposalForm(forms.ModelForm):
+    # Adding fields that will be used for the contract
+    lease_value = forms.DecimalField(
+        max_digits=10, decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Lease value'
+        })
+    )
+    start_date = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'class': 'form-control', 'type': 'date'
+        }),
+        initial=date.today
+    )
+    end_date = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'class': 'form-control', 'type': 'date'
+        }),
+        initial=date.today() + timedelta(days=365)
+    )
+
     class Meta:
         model = Proposal
-        fields = ['proposed_price', 'message']
+        fields = ['proposed_price', 'message', 'lease_value', 'start_date', 'end_date']
         widgets = {
-            'proposed_price': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Propose your price'}),
-            'message': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Leave a message (optional)'}),
+            'proposed_price': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Propose your price'
+            }),
+            'message': forms.Textarea(attrs={
+                'class': 'form-control',
+                'placeholder': 'Leave a message (optional)',
+                'rows': 4
+            }),
         }
+
+    def save(self, commit=True):
+        # Save the Proposal instance first
+        proposal = super().save(commit=False)
+        
+        if commit:
+            proposal.save()  # Save the proposal instance
+
+            # Create a corresponding Contract using form data
+            Contract.objects.create(
+                proposal=proposal,
+                landlord=proposal.property.landlord,  # Derived from property
+                client=proposal.proposer,            # Derived from the proposal
+                property=proposal.property,
+                lease_value=self.cleaned_data['lease_value'],
+                start_date=self.cleaned_data['start_date'],
+                end_date=self.cleaned_data['end_date']
+            )
+        return proposal
         
 from django import forms
 from .models import Wallet

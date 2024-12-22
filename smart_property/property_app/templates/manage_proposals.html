@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{%block content%}
+<div class="container mt-4">
+    <h1>contracts</h1>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Property</th>
+                <th>Proposer</th>
+                <th>Proposed price</th>
+                <th>status</th>
+                <th>start_date</th>
+                <th>end_date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for proposal in proposals %}
+                <tr>
+                    
+                    <td>{{ forloop.counter }}</td>
+                    <th>{{proposal.property}}</th>
+                    <td>{{ proposal.proposer }}</td>
+                    <td>Ksh.{{ proposal.proposed_price }}</td>
+                    <td>
+                        <!-- Conditionally apply classes to status -->
+                        <span class="btn-sm 
+                            {% if proposal.status == 'accepted' %}
+                                btn-success  <!-- Green for accepted -->
+                            {% elif proposal.status == 'rejected' %}
+                                btn-danger  <!-- Red for rejected -->
+                            {% else %}
+                                btn-secondary  <!-- Neutral for other statuses -->
+                            {% endif %}
+                        ">
+                            {{ proposal.status|capfirst }} <!-- Capitalized status text -->
+                        </span>
+                    </td>                    <td>{{ proposal.start_date }}</td>
+                    <td>{{ proposal.end_date }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+{%endblock%}

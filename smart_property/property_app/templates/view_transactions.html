@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{%block content%}
+<div class="container mt-4">
+    <h1>Transactions</h1>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Transaction reference</th>
+                <th>Amount</th>
+                <th>Sender</th>
+                <th>Receiver</th>
+                <th>timestamp</th>
+                <th>status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for transaction in transactions %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ transaction.reference }}</td>
+                    <td>Ksh.{{ transaction.amount }}</td>
+                    <td>{{transaction.sender}}</td>
+                    <td>{{transaction.receiver}}</td>
+                    <td>{{ transaction.transaction_type }}</td>
+                    <td>{{ transaction.timestamp }}</td>
+                    <td>{{ transaction.status }}</td>
+
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+{%endblock%}

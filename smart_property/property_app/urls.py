@@ -1,5 +1,5 @@
 from . import views
-from .views import ClientDashboardView, LandlordDashboardView, AdminDashboardView,update_profile,PropertyEditView, PropertyDeleteView,submit_proposal,view_contract,initiate_transaction
+from .views import ClientDashboardView, LandlordDashboardView, AdminDashboardView,update_profile,PropertyEditView, PropertyDeleteView,submit_proposal,view_contract,initiate_transaction,delete_user,WalletListView,TransactionListView,ContractListView,ProposalListView,PropertyListView
 from django.urls import path
 
 urlpatterns = [
@@ -19,5 +19,14 @@ urlpatterns = [
     path('wallet/', views.wallet_detail, name='wallet_detail'),
     path('wallet/create/', views.create_wallet, name='create_wallet'),
     path('transaction-history/', views.transaction_history, name='transaction_history'),
+    # path('transaction/pay-property/', views.pay_property, name='pay_property'),
+    path('transactions/status/', views.transaction_status, name='transaction_status'),
+    path('delete-user/<int:user_id>/', delete_user, name='delete_user'),
+    path('wallets/', WalletListView.as_view(), name='manage_wallets'),
+    path('transactions/', TransactionListView.as_view(), name='view_transactions'),
+    path('Contracts/', ContractListView.as_view(), name='view_contracts'),
+    path('Proposals/', ProposalListView.as_view(), name='view_proposals'),
+    path('admins/properties/', PropertyListView.as_view(), name='property_list'),
+
 
     ]

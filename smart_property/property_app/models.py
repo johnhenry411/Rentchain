@@ -6,7 +6,8 @@ from django.conf import settings
 import random
 import string
 from decimal import Decimal
-
+import logging 
+from django.db import transaction
 # Assign roles to groups during setup
 def setup_roles():
     # Ensure the necessary groups exist
@@ -19,12 +20,7 @@ def setup_roles():
 
     # Assign permissions to the client group
     client_group.permissions.add(view_property_permission)
-
-
-
-
 class User(AbstractUser):
-    # Role choices
     ROLES = [
         ('client', 'Client'),
         ('landlord', 'Landlord'),
@@ -33,7 +29,7 @@ class User(AbstractUser):
     role = models.CharField(max_length=10, choices=ROLES, default='client')
     wallet_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
-    # Custom related names for avoiding clashes with the default fields in AbstractUser
+   
     groups = models.ManyToManyField(
         Group,
         related_name="custom_user_groups",  # Specify a custom related_name
@@ -46,21 +42,15 @@ class User(AbstractUser):
     )
 
     def is_client(self):
-        """
-        Check if the user is in the 'Clients' group.
-        """
+       
         return self.groups.filter(name='Clients').exists()
 
     def is_landlord(self):
-        """
-        Check if the user is in the 'Landlords' group.
-        """
+       
         return self.groups.filter(name='Landlords').exists()
 
     def is_admin(self):
-        """
-        Check if the user is in the 'Admins' group.
-        """
+       
         return self.groups.filter(name='Admins').exists()
 
     def setup_roles(self):
@@ -90,10 +80,8 @@ class User(AbstractUser):
         if is_new_user:
             Wallet.objects.get_or_create(user=self)
 
-
-
-
 class Property(models.Model):
+    id = models.AutoField(primary_key=True)  # Auto-incrementing ID field
     landlord = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="properties")
     name = models.CharField(max_length=255, default='test')
     description = models.TextField(default='test')
@@ -180,8 +168,6 @@ class Review(models.Model):
         return f"Review by {self.tenant} for {self.property}"
 
 
-from django.db import models
-from django.conf import settings
 
 class Profile(models.Model):
     user = models.OneToOneField(
@@ -204,7 +190,12 @@ class Proposal(models.Model):
         ('accepted', 'Accepted'),
         ('rejected', 'Rejected'),
     ]
-    
+    payment_status = models.CharField(
+        max_length=20,
+        choices=[('Pending', 'Pending'), ('Paid', 'Paid')],
+        default='Pending'
+    )
+   
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='proposals')
     proposer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='proposals')
     proposed_price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -212,9 +203,10 @@ class Proposal(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')  # New field
     landlord_response = models.TextField(blank=True, null=True)  # New field
-    client_signature = models.CharField(max_length=255, blank=True, null=True)
-    landlord_signature = models.CharField(max_length=255, blank=True, null=True)
-    
+   
+    paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
     def generate_signature(self, user):
         print(f"Generating signature for user: {user}")  # Debug
         print(f"User username: {user.username if user else 'No user found'}")  # Debug
@@ -233,65 +225,196 @@ class Proposal(models.Model):
 
     def __str__(self):
         return f"Proposal by {self.proposer} for {self.property.name} - {self.proposed_price}"
+    from django.core.exceptions import ObjectDoesNotExist
+from .models import Property, User  # Assuming these are in the same app
+
+
+
+from django.core.exceptions import ObjectDoesNotExist
+
+# Utility functions for default values
+def get_default_property():
+    # Create or get a default property and assign a landlord
+    default_landlord_id = get_default_landlord()
+    property, created = Property.objects.get_or_create(
+        name="Default Property",
+        defaults={
+            "location": "Default Location",
+            "description": "Default property description",
+            "landlord_id": 1,
+            "baths":2,
+            "beds":3,
+            "size":2345,
+            "number_of_units": 5# Assign the default landlord's ID
+        }
+    )
+    return property.id  
+
+def get_default_landlord():
+    default_landlord, created = User.objects.get_or_create(
+        username="default_landlord",
+        defaults={"password": "password123"}
+    )
+    return default_landlord.id 
+
+def get_default_user_john():
+    john, created = User.objects.get_or_create(
+        username="john",
+        defaults={"password": "password123"}
+    )
+    return john.id  
+
+class Contract(models.Model):
+    proposal = models.OneToOneField(Proposal, on_delete=models.CASCADE)
+    landlord = models.ForeignKey(User, on_delete=models.CASCADE)
+    client = models.ForeignKey(
+        User, related_name="client_contracts", on_delete=models.CASCADE
+    )
+    property_ref = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="contracts")
+    lease_value = models.DecimalField(max_digits=10, decimal_places=2)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    landlord_signature = models.CharField(max_length=100, null=True, blank=True)
+    client_signature = models.CharField(max_length=100, null=True, blank=True)
+    paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    @property
+    def payment_status(self):
+        """Dynamically calculate the payment status."""
+        if self.proposal.proposed_price <= self.paid_amount:
+            return "PAID"
+        return "PENDING"
+
+
+    def generate_signature(self, user):
+        """Generate a signature based on the username and a random string."""
+        print(f"Generating signature for user: {user}")  # Debugging
+        if not user or not user.username:
+            return "Invalid-User"
+
+        random_string = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+        return f"{user.username}.{random_string}"
+
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def sign_contract(self):
+    if self.proposal.status == 'accepted' and not self.landlord_signature and not self.client_signature:
+        self.client_signature = self.generate_signature(self.client)
+        self.landlord_signature = self.generate_signature(self.landlord)
+        logging.debug(f"Generated Client Signature: {self.client_signature}")
+        logging.debug(f"Generated Landlord Signature: {self.landlord_signature}")
+        self.save()  # Save the contract
+        logging.info("Contract saved successfully!")
+
+logger = logging.getLogger(__name__)
+  
 class Wallet(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,  # Ensures wallet is deleted when user is deleted
         related_name='wallet'
     )
-    balance = models.DecimalField(max_digits=10, decimal_places=2, default=3000000.0)
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=45785.0)
 
     def __str__(self):
         return f"{self.user.username}'s Wallet - Balance: {self.balance}"
 
-from django.db import models
-from django.db import transaction
-import uuid
+
+logger = logging.getLogger(__name__)
 
 class Transaction(models.Model):
+    STATUS_PENDING = 'pending'
+    STATUS_COMPLETED = 'completed'
+    STATUS_FAILED = 'failed'
+    STATUS_IN_PROGRESS = 'in_progress'
+
     STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('completed', 'Completed'),
-        ('failed', 'Failed'),
-        ('in_progress', 'In Progress'),
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_COMPLETED, 'Completed'),
+        (STATUS_FAILED, 'Failed'),
+        (STATUS_IN_PROGRESS, 'In Progress'),
     ]
 
     sender = models.ForeignKey(User, related_name='sent_transactions', on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='received_transactions', on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    reference = models.CharField(max_length=50, unique=True)
-    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending')
+    reference = models.CharField(max_length=50, unique=True, blank=True)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    property = models.ForeignKey('Property', null=True, blank=True, on_delete=models.SET_NULL)
     timestamp = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)  # Tracks when the transaction was completed
+
     def save(self, *args, **kwargs):
-        # Automatically generate a unique reference if not provided
         if not self.reference:
-            self.reference = str(uuid.uuid4())
+            self.reference = f"TXN-{uuid.uuid4().hex[:8].upper()}"
         super().save(*args, **kwargs)
 
-    def process_transaction(self):
+    def validate_transaction(self):
+        """
+        Validates transaction before processing.
+        """
         sender_wallet = self.sender.wallet
         receiver_wallet = self.receiver.wallet
 
+        # Ensure wallets exist
         if sender_wallet is None or receiver_wallet is None:
-            self.status = 'failed'
-            self.save()
-            return
+            raise ValueError("Sender or receiver wallet not found.")
 
+        # Check sufficient balance
         if sender_wallet.balance < self.amount:
-            self.status = 'failed'
-            self.save()
-            return
+            raise ValueError("Insufficient funds in sender's wallet.")
 
+        # Validate property (if applicable)
+        if self.property:
+            if self.property.status != 'available':
+                raise ValueError("Property is not available for transaction.")
+            if self.amount != self.property.price:
+                raise ValueError("Transaction amount does not match property price.")
+
+    def process_transaction(self):
+        """
+        Process the transaction and update related wallets and property status.
+        """
         try:
+            # Validate transaction
+            self.validate_transaction()
+
+            sender_wallet = self.sender.wallet
+            receiver_wallet = self.receiver.wallet
+
+            # Perform atomic transaction
             with transaction.atomic():
                 sender_wallet.balance -= self.amount
                 receiver_wallet.balance += self.amount
                 sender_wallet.save()
                 receiver_wallet.save()
-                self.status = 'completed'
+
+                # Update property status (if applicable)
+                if self.property:
+                    if self.property.t_type == 'sale':
+                        self.property.status = 'sold'
+                    elif self.property.t_type in ['rent', 'lease']:
+                        self.property.status = 'occupied'
+                    self.property.save()
+
+                # Mark transaction as completed
+                self.status = self.STATUS_COMPLETED
+                self.completed_at = timezone.now()
                 self.save()
+
+        except ValueError as ve:
+            logger.error(f"Transaction validation failed: {ve}")
+            self.status = self.STATUS_FAILED
+            self.save()
+            raise ve
         except Exception as e:
-            self.status = 'failed'
+            logger.error(f"Transaction processing failed: {e}")
+            self.status = self.STATUS_FAILED
             self.save()
             raise e
-
+        transaction = Transaction.objects.create(
+    sender=sender_user,
+    receiver=receiver_user,
+    amount=property_obj.price,  
+    property=property_obj
+)

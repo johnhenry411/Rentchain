@@ -1,16 +1,26 @@
 
-{%extends 'base.html'%}
+{% extends 'base.html' %}
 {% load static %}
 
-{%block content%}
+{% block content %}
 <div class="transaction-page">
     <div class="transaction-left">
         <img src="{% static 'img/20943648.jpg' %}" alt="Wallet Animation">
-        <h2>Transfer Money Seamlessly</h2>
+        <h2>Handle Your Transactions</h2>
     </div>
+
     <div class="transaction-right">
-        <form id="transaction-form" action="/transaction/" method="POST">
+        <!-- Selection Menu -->
+        <div class="action-selection">
+            <h3>hey there {{request.user.username}},what'd you like to to?</h3>
+            <button id="send-money-option" class="btn">Send Money</button>
+            <button id="pay-property-option" class="btn">Pay for Property</button>
+        </div>
+
+        <!-- Send Money Form -->
+        <form id="send-money-form" class="transaction-form" action="/transaction/" method="POST" style="display: none;">
             {% csrf_token %}
+            <h3>Send Money</h3>
             <div class="form-group">
                 <label for="receiver">Receiver Username:</label>
                 <input type="text" name="receiver" id="receiver" placeholder="Enter receiver's username" required>
@@ -20,8 +30,27 @@
                 <input type="number" name="amount" id="amount" placeholder="Enter amount" required>
                 <small>Your Balance: Ksh {{ request.user.wallet.balance }}</small>
             </div>
-            <button type="button" id="send-money-btn" class="btn">Send Money</button>
+            <button type="button" id="send-money-btn" class="btn">Proceed</button>
         </form>
+
+        <!-- Pay for Property Form -->
+        <form id="pay-property-form" class="transaction-form" action="/transaction/" method="POST" style="display: none;">
+            {% csrf_token %}
+            <h3>Pay for Property</h3>
+            <select id="property_id" name="property_id" required>
+                <option value="" disabled selected>Select a property</option>
+                {% for property in properties %}
+                    <option value="{{ property.id }}">{{ property.name }}</option>
+                {% endfor %}
+            </select>
+            <div class="form-group">
+                <label for="property-amount">Amount:</label>
+                <input type="number" name="amount" id="property-amount" placeholder="Enter amount" required>
+                <small>Your Balance: Ksh {{ request.user.wallet.balance }}</small>
+            </div>
+            <button type="button" id="pay-property-btn" class="btn">Proceed</button>
+        </form>
+        
     </div>
 </div>
 
@@ -40,52 +69,80 @@
 </div>
 
 <script>
-// Get the modal and elements
-var modal = document.getElementById("password-modal");
-var sendMoneyBtn = document.getElementById("send-money-btn");
-var closeModal = document.getElementById("close-modal");
-var passwordForm = document.getElementById("password-form");
-var passwordInput = document.getElementById("password");
-var transactionForm = document.getElementById("transaction-form");
+// Elements for toggling between forms
+const sendMoneyOption = document.getElementById("send-money-option");
+const payPropertyOption = document.getElementById("pay-property-option");
+const sendMoneyForm = document.getElementById("send-money-form");
+const payPropertyForm = document.getElementById("pay-property-form");
 
-// When the user clicks the "Send Money" button, show the modal
-sendMoneyBtn.onclick = function() {
+// Modal elements
+const modal = document.getElementById("password-modal");
+const closeModal = document.getElementById("close-modal");
+const passwordForm = document.getElementById("password-form");
+const passwordInput = document.getElementById("password");
+const sendMoneyBtn = document.getElementById("send-money-btn");
+const payPropertyBtn = document.getElementById("pay-property-btn");
+
+// Show Send Money Form
+sendMoneyOption.onclick = function () {
+    sendMoneyForm.style.display = "block";
+    payPropertyForm.style.display = "none";
+};
+
+// Show Pay for Property Form
+payPropertyOption.onclick = function () {
+    payPropertyForm.style.display = "block";
+    sendMoneyForm.style.display = "none";
+};
+
+// Close the modal
+closeModal.onclick = function () {
+    modal.style.display = "none";
+};
+
+// Handle password confirmation for Send Money
+sendMoneyBtn.onclick = function () {
+    showPasswordModal(sendMoneyForm);
+};
+
+// Handle password confirmation for Pay Property
+payPropertyBtn.onclick = function () {
+    showPasswordModal(payPropertyForm);
+};
+
+// Show modal and attach form submission logic
+function showPasswordModal(form) {
     modal.style.display = "block";
-};
 
-// When the user clicks the "x" button, close the modal
-closeModal.onclick = function() {
-    modal.style.display = "none";
-};
+    passwordForm.onsubmit = function (event) {
+        event.preventDefault();
 
-// When the user submits the password form
-passwordForm.onsubmit = function(event) {
-    event.preventDefault();
+        const password = passwordInput.value;
 
-    // Get the entered password
-    var password = passwordInput.value;
+        // Append password to the form
+        const passwordField = document.createElement("input");
+        passwordField.type = "hidden";
+        passwordField.name = "password";
+        passwordField.value = password;
+        form.appendChild(passwordField);
 
-    // Add the password to the transaction form before submitting
-    var passwordField = document.createElement('input');
-    passwordField.type = 'hidden';
-    passwordField.name = 'password';
-    passwordField.value = password;
-    transactionForm.appendChild(passwordField);
+        // Submit the form
+        form.submit();
 
-    // Submit the transaction form
-    transactionForm.submit();
+        // Close modal after submission
+        modal.style.display = "none";
+    };
+}
 
-    // Close the modal after submission
-    modal.style.display = "none";
-};
-
-// Close the modal if the user clicks anywhere outside of the modal
-window.onclick = function(event) {
+// Close the modal when clicking outside of it
+window.onclick = function (event) {
     if (event.target === modal) {
         modal.style.display = "none";
     }
 };
 </script>
+
+
 <style>
     /* styles.css */
 

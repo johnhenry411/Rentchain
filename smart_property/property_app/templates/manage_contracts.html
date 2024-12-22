@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{%block content%}
+<div class="container mt-4">
+    <h1>contracts</h1>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Proposal ref</th>
+                <th>Landlord</th>
+                <th>Proposed price</th>
+                <th>Paid Amount</th>
+                <th>Payment Status</th>
+                
+            </tr>
+        </thead>
+        <tbody>
+            {% for contract in contracts %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ contract.proposal }}</td>
+                    <td>{{ contract.landlord }}</td>
+                    <td>Ksh.{{ contract.lease_value}}</td>
+                    <td>{{ contract.paid_amount }}</td>
+                    <td>
+                        <span class="btn-sm 
+                            {% if contract.payment_status == 'PAID' %}
+                                btn-success  <!-- Green for accepted -->
+                           
+                            {% else %}
+                                btn-secondary  <!-- Neutral for other statuses -->
+                            {% endif %}
+                        ">
+                            {{ contract.payment_status|capfirst }} <!-- Capitalized status text -->
+                        </span>
+                    </td>  
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+{%endblock%}
