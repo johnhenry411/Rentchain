@@ -1,5 +1,5 @@
 from . import views
-from .views import ClientDashboardView, LandlordDashboardView, AdminDashboardView,update_profile,PropertyEditView, PropertyDeleteView,submit_proposal,view_contract,initiate_transaction,delete_user,WalletListView,TransactionListView,ContractListView,ProposalListView,PropertyListView
+from .views import ClientDashboardView, LandlordDashboardView, AdminDashboardView,update_profile,PropertyEditView, PropertyDeleteView,submit_proposal,view_contract,initiate_transaction,delete_user,WalletListView,TransactionListView,ContractListView,ProposalListView,PropertyListView, logout_view
 from django.urls import path
 
 urlpatterns = [
@@ -27,6 +27,7 @@ urlpatterns = [
     path('Contracts/', ContractListView.as_view(), name='view_contracts'),
     path('Proposals/', ProposalListView.as_view(), name='view_proposals'),
     path('admins/properties/', PropertyListView.as_view(), name='property_list'),
+    path('logout/', logout_view, name='logout'),
 
 
     ]

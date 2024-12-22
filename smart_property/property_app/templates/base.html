@@ -78,9 +78,10 @@
                         <a href="/Rentchain/contact.html" class="nav-item nav-link">Contact</a>
                     </div>
                     {% if dashboard_url %}
-    <a href="{{ dashboard_url }}">Hello {{request.user.username}}</a>
+    <a href="{{ dashboard_url }}" class="nav-item nav-link">Hello {{request.user.username}}</a>
+    <a href="{% url 'logout' %}" class="nav-item nav-link"><i class="bi bi-box-arrow-right"></i></a>
 {% else %}
-    <a href="/login/">Login</a>
+    <a href="/login/" class="nav-item nav-link">Login</a>
 {% endif %}
 
                 </div>

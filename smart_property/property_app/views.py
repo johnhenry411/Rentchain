@@ -19,6 +19,7 @@ from decimal import Decimal
 import uuid
 from django.db.models import Q
 import logging
+from django.contrib.auth import logout
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG) 
@@ -337,8 +338,10 @@ class PropertyDeleteView(View):
 def property_detail(request, id):
     property = get_object_or_404(Property, id=id)
     return render(request, 'property_detail.html', {'property': property})
-
 def submit_proposal(request, property_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
     property = get_object_or_404(Property, id=property_id)
 
     if request.method == 'POST':
@@ -710,3 +713,7 @@ def transaction_status(request):
         'transactions': transactions,
     }
     return render(request, 'transaction_status1.html', context)
+
+def logout_view(request):
+    logout(request)
+    return redirect('home')  # Redirects to home page after logout
