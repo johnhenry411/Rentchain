@@ -1,6 +1,6 @@
  
 appdirs==1.4.4        
-asgiref==3.2.7            
+asgiref==3.8.1            
 celery==5.4.0
 
 cryptography==42.0.7
