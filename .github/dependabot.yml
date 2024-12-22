@@ -1,12 +1,10 @@
 version: 2
 updates:
-  - package-ecosystem: "pip"   # Using pip for Python
-    directory: "/"              # Location of requirements.txt (root directory in this case)
+  - package-ecosystem: "pip"
+    directory: "/"
     schedule:
-      interval: "weekly"        # Check for updates weekly
-    commit-message:
-      prefix: "fix"             # Use a "fix" prefix for commit messages
-    ignore:
-      - dependency-name: "Django"  # Ignore updates for Django
-        versions: ["3.x"]          # Specifically ignore all versions of Django 3.x
-
+      interval: "weekly"
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
