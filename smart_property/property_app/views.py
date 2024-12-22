@@ -400,7 +400,14 @@ def view_contract(request, proposal_id):
         return HttpResponseForbidden("You must be logged in to view this contract.")
 
     proposal = get_object_or_404(Proposal, id=proposal_id)
-    contract = get_object_or_404(Contract, proposal=proposal)
+    try:
+        contract = Contract.objects.get(proposal=proposal)
+    except Contract.DoesNotExist:
+        logger.error("No Contract matches the given query.")
+        return render(request, 'transaction_status.html', {
+                    'message': "No Contract matches the given query.",
+                    'transaction': None
+                })
 
     logger.debug(f"Request User: {request.user}, Landlord: {contract.landlord}, Client: {contract.client}")
 

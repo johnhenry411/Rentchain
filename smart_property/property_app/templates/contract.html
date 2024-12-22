@@ -73,7 +73,14 @@
             <h1>The (Surprisingly Thorough) Rental Agreement</h1>
             <p>"Because good fences make good neighbors, and good contracts make better tenants."
         </div>
-        <p>Payment Status: {{ contract.payment_status }}</p>
+        <p>
+            Payment Status:
+            <span style="color: {% if contract.payment_status == 'PAID' %}green{% else %}red{% endif %};">
+                {{ contract.payment_status }}
+                <i class="fas {% if contract.payment_status == 'PAID' %}fa-check-circle{% else %}fa-clock{% endif %}"></i>
+            </span>
+        </p>
+        
 
 
         <h2 class="section-title">1. The Parties Involved</h2>
