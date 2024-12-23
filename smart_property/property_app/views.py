@@ -1,5 +1,5 @@
 from django.shortcuts import redirect,render,get_object_or_404
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
@@ -20,6 +20,7 @@ import uuid
 from django.db.models import Q
 import logging
 from django.contrib.auth import logout
+from django.views.decorators.csrf import csrf_exempt
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG) 
@@ -400,14 +401,7 @@ def view_contract(request, proposal_id):
         return HttpResponseForbidden("You must be logged in to view this contract.")
 
     proposal = get_object_or_404(Proposal, id=proposal_id)
-    try:
-        contract = Contract.objects.get(proposal=proposal)
-    except Contract.DoesNotExist:
-        logger.error("No Contract matches the given query.")
-        return render(request, 'transaction_status.html', {
-                    'message': "No Contract matches the given query.",
-                    'transaction': None
-                })
+    contract = get_object_or_404(Contract, proposal=proposal)
 
     logger.debug(f"Request User: {request.user}, Landlord: {contract.landlord}, Client: {contract.client}")
 
@@ -540,8 +534,8 @@ def initiate_transaction(request):
                              'transaction': None
                     })
             # Fetch the contract and wallets
-            contract = Contract.objects.filter(property_id=property_id, client=request.user).first()
-            proposal=Proposal.objects.filter(property_id=property_id,client=request.user).first()
+            contract = Contract.objects.filter(property_ref=property_id, client=request.user).first()
+            proposal=Proposal.objects.filter(property_id=property_id,proposer=request.user).first()
             if not contract:
                  return render(request, 'transaction_status.html', {
                 'message': "Transaction Failed: No contract found for this property.",
@@ -594,9 +588,8 @@ def initiate_transaction(request):
              }) 
 
 # Render the transaction form for non-POST requests
-    properties = Property.objects.all()  # Adjust filtering logic as needed
-    return render(request, 'transaction_form.html', {'properties': properties})   # Render your payment page
-
+    properties = Property.objects.all() 
+    return render(request, 'transaction_form.html', {'properties': properties})  
 
 # View details of the wallet
 @login_required
@@ -643,56 +636,71 @@ def transaction_history(request):
     user = request.user
     transactions = Transaction.objects.filter(
         Q(sender=user) | Q(receiver=user)
-    ).select_related('property').order_by('-timestamp')
+    ).select_related('property', 'sender', 'receiver').order_by('-timestamp')
 
     transaction_messages = []
     current_balance = user.wallet.balance
 
-    # Status-based message handling
     status_messages = {
         'completed': {
-            'sender': "Confirmed {reference}, KSH.{amount} sent to {receiver} for {property} on {timestamp}.",
-            'receiver': "Confirmed {reference}, you have received KSH.{amount} from {sender} for {property} on {timestamp}."
+            'sender': {
+                'property': "Confirmed {reference}, KSH.{amount} sent to {receiver_first_name} {receiver_last_name} for property {property} on {timestamp}. Current balance: KSH.{current_balance}.",
+                'user': "Confirmed {reference}, KSH.{amount} sent to {receiver_first_name} {receiver_last_name} on {timestamp}. Current balance: KSH.{current_balance}."
+            },
+            'receiver': {
+                'property': "Confirmed {reference}, you have received KSH.{amount} from {sender_first_name} {sender_last_name} for property {property} on {timestamp}. Current balance: KSH.{current_balance}.",
+                'user': "Confirmed {reference}, you have received KSH.{amount} from {sender_first_name} {sender_last_name} on {timestamp}. Current balance: KSH.{current_balance}."
+            }
         },
-        'failed': "Transaction Failed, {reference}! KSH.{amount} sent to {receiver} for {property} on {timestamp} failed. Please try again.",
-        'pending': "Transaction Pending, {reference}. KSH.{amount} to {receiver} for {property} is being processed.",
-        'cancelled': "Transaction Cancelled, {reference}. KSH.{amount} to {receiver} for {property} was not processed."
+        'failed': "Transaction Failed, {reference}! KSH.{amount} sent to {receiver_first_name} {receiver_last_name} for {property} on {timestamp} failed. Current balance: KSH.{current_balance}.",
+        'pending': "Transaction Pending, {reference}. KSH.{amount} to {receiver_first_name} {receiver_last_name} for {property} is being processed. Current balance: KSH.{current_balance}.",
+        'cancelled': "Transaction Cancelled, {reference}. KSH.{amount} to {receiver_first_name} {receiver_last_name} for {property} was not processed. Current balance: KSH.{current_balance}."
     }
 
     for transaction in transactions:
         status = transaction.status
+        transaction_type = 'property' if transaction.property else 'user'
         base_message = status_messages.get(status)
 
         if status == 'completed':
             if transaction.sender == user:
-                message = base_message['sender'].format(
+                message_template = base_message['sender'][transaction_type]
+                message = message_template.format(
                     reference=transaction.reference,
                     amount=transaction.amount,
-                    receiver=transaction.receiver.username,
-                    property=transaction.property.name if transaction.property else "this transaction",
-                    timestamp=transaction.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                    receiver_first_name=transaction.receiver.first_name,
+                    receiver_last_name=transaction.receiver.last_name,
+                    property=transaction.property.name if transaction.property else "",
+                    timestamp=transaction.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                    current_balance=current_balance
                 )
                 current_balance -= transaction.amount
             elif transaction.receiver == user:
-                message = base_message['receiver'].format(
+                message_template = base_message['receiver'][transaction_type]
+                message = message_template.format(
                     reference=transaction.reference,
                     amount=transaction.amount,
-                    sender=transaction.sender.username,
-                    property=transaction.property.name if transaction.property else "this transaction",
-                    timestamp=transaction.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                    sender_first_name=transaction.sender.first_name,
+                    sender_last_name=transaction.sender.last_name,
+                    property=transaction.property.name if transaction.property else "",
+                    timestamp=transaction.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                    current_balance=current_balance
                 )
                 current_balance += transaction.amount
+                
         elif status in status_messages:  # Handle other statuses
             message = base_message.format(
                 reference=transaction.reference,
                 amount=transaction.amount,
-                receiver=transaction.receiver.username,
+                receiver_first_name=transaction.receiver.first_name,
+                receiver_last_name=transaction.receiver.last_name,
                 property=transaction.property.name if transaction.property else "this transaction",
-                timestamp=transaction.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                timestamp=transaction.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                current_balance=current_balance
             )
         else:
             # Handle unknown statuses
-            message = f"Unknown transaction status for {transaction.reference}."
+            message = f"Unknown transaction status for {transaction.reference}. Current balance: KSH.{current_balance}."
 
         # Append message to transaction_messages
         transaction_messages.append({
@@ -724,3 +732,65 @@ def transaction_status(request):
 def logout_view(request):
     logout(request)
     return redirect('home')  # Redirects to home page after logout
+
+
+@login_required
+@csrf_exempt
+@transaction.atomic
+def metamask_payment(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        property_id = data.get('property_id')
+        amount = Decimal(data.get('amount', 0))
+        transaction_hash = data.get('transaction_hash')
+
+        try:
+            # Validate data
+            if amount <= 0:
+                raise ValueError("Invalid amount.")
+
+            # Fetch property and associated contract
+            contract = Contract.objects.filter(property_ref=property_id, client=request.user).first()
+            if not contract:
+                return JsonResponse({'message': 'Transaction Failed: Invalid property ID.'}, status=400)
+
+            # Fetch the tenant and landlord wallet addresses (MetaMask addresses)
+            tenant_wallet_address = request.data.get('tenant_wallet_address')
+            landlord_wallet_address = contract.landlord.wallet_address  # Assuming landlord's MetaMask address is stored in contract
+
+            if not tenant_wallet_address or not landlord_wallet_address:
+                return JsonResponse({'message': 'Missing MetaMask wallet addresses.'}, status=400)
+
+            # Simulate a transaction (balance check and sending the transaction will be done on frontend using Ethers.js)
+            # Here, we just check if the provided transaction hash is valid (for now, actual validation is done in the frontend)
+            if not transaction_hash:
+                return JsonResponse({'message': 'Transaction Failed: Missing transaction hash.'}, status=400)
+
+            # Record the transaction
+            Transaction.objects.create(
+                sender=request.user,
+                receiver=contract.landlord,
+                amount=amount,
+                reference=f"TXN-{uuid.uuid4().hex[:8].upper()}",
+                status='pending',  # Mark the transaction as pending initially
+                property_id=property_id,
+                transaction_hash=transaction_hash
+            )
+
+            # Update contract details and check if the full payment has been made
+            contract.paid_amount += amount
+            if contract.paid_amount >= contract.proposal.proposed_price:
+                contract.proposal.payment_status = "Paid"
+                message = "Payment successful. You have cleared the lease value."
+            else:
+                remaining = contract.proposal.proposed_price - contract.paid_amount
+                message = f"Payment successful. Remaining amount: Ksh {remaining:.2f}"
+
+            contract.save()
+
+            return JsonResponse({'message': message}, status=200)
+
+        except Exception as e:
+            # Generic error handling
+            return JsonResponse({'message': f'Transaction Failed: {str(e)}'}, status=400)
+

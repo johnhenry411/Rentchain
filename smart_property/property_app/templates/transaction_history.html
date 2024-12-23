@@ -8,7 +8,7 @@
     {% for transaction in transaction_messages %}
 
     <!-- Received Bubble -->
-    {% if transaction.type == 'received' %}
+    {% if transaction.type == 'completed' %}
     <div class="chat-bubble received">
       <div class="message-content">
         {% if transaction.property %}
@@ -30,7 +30,28 @@
       </span>
       
     </div>
-  
+     {% elif  transaction.type == 'completed_property' %}
+    <div class="chat-bubble received">
+      <div class="message-content">
+        {% if transaction.property %}
+        <p>Received KSH.{{ transaction.amount }} for the property "{{ transaction.property.name }}" from {{ transaction.sender.username }}.</p>
+      {% else %}
+        <p>{{ transaction.message }}</p>
+      {% endif %}
+      </div>
+      <span class="timestamp">
+        {% if transaction.timestamp %}
+          {% if transaction.timestamp|date:"Y-m-d" == "now"|date:"Y-m-d" %}
+            today | {{ transaction.timestamp|date:"g:i A" }}
+          {% else %}
+            {{ transaction.timestamp|date:"M d, Y g:i A" }}
+          {% endif %}
+        {% else %}
+          No timestamp available
+        {% endif %}
+      </span>
+      
+    </div>
     <!-- Sent Bubble -->
      {%else%}
     <div class="chat-bubble sent">
@@ -56,7 +77,9 @@
     </div>
     {%endif%}
     {%endfor%}
-
+{%for transaction in transaction_messages%}
+{{transaction.message}}
+{%endfor%}
   </div>
   
 

@@ -12,9 +12,11 @@
     <div class="transaction-right">
         <!-- Selection Menu -->
         <div class="action-selection">
-            <h3>hey there {{request.user.username}},what'd you like to to?</h3>
+            <h3>hey there {{request.user.first_name}},what'd you like to to?</h3>
             <button id="send-money-option" class="btn">Send Money</button>
             <button id="pay-property-option" class="btn">Pay for Property</button>
+            <button id="pay-with-metamask-form" class="btn">Pay for MetaMask</button>
+
         </div>
 
         <!-- Send Money Form -->
@@ -50,10 +52,32 @@
             </div>
             <button type="button" id="pay-property-btn" class="btn">Proceed</button>
         </form>
+        <div id="pay-with-metamask-form" class="transaction-form" style="display: block;">
+            <h3>Pay with MetaMask</h3>
+            
+            <!-- Property Selection Dropdown -->
+            <select id="metamask-property-id" name="property_id" required>
+                <option value="" disabled selected>Select a property</option>
+                {% for property in properties %}
+                    <option value="{{ property.id }}" data-price="{{ property.price }}">{{ property.name }} - Ksh {{ property.price }}</option>
+                {% endfor %}
+            </select>
+            
+            <!-- Amount Input -->
+            <div class="form-group">
+                <label for="metamask-amount">Amount:</label>
+                <input type="number" name="amount" id="metamask-amount" placeholder="Enter amount" required>
+                <small>Your Balance: Ksh {{ request.user.wallet.balance }}</small>
+            </div>
         
-    </div>
+            <!-- Pay with MetaMask Button -->
+            <button type="button" onclick="payWithMetaMask()">Pay with MetaMask</button>
+        </div>
+        
 </div>
 
+    </div>
+</div>
 <!-- Modal for Password Confirmation -->
 <div id="password-modal" class="modal">
     <div class="modal-content">
@@ -67,6 +91,7 @@
         </form>
     </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <script>
 // Elements for toggling between forms
@@ -140,6 +165,110 @@ window.onclick = function (event) {
         modal.style.display = "none";
     }
 };
+// Check if ethers.js is loaded
+if (typeof ethers !== 'undefined') {
+    console.log("Ethers.js loaded successfully");
+} else {
+    console.log("Ethers.js failed to load");
+}
+
+// Function to handle the MetaMask payment
+async function payWithMetaMask() {
+    const propertyId = document.getElementById('metamask-property-id').value;
+    const amount = document.getElementById('metamask-amount').value;
+
+    // Validate inputs
+    if (!propertyId || !amount) {
+        alert("Please select a property and enter the amount.");
+        return;
+    }
+
+    if (parseFloat(amount) <= 0) {
+        alert("Amount must be greater than 0.");
+        return;
+    }
+
+    // Check if MetaMask is available and connected
+    if (typeof window.ethereum === 'undefined') {
+        alert("MetaMask is not installed. Please install MetaMask to proceed.");
+        return;
+    }
+
+    try {
+        // Request MetaMask connection
+        await ethereum.request({ method: 'eth_requestAccounts' });
+
+        // Create an ethers.js provider
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+
+        // Get the user's account address
+        const userAddress = await signer.getAddress();
+        console.log("User Address:", userAddress);
+
+        // Ensure the MetaMask is connected to Sepolia network
+        const network = await provider.getNetwork();
+        if (network.chainId !== 11155111) {  // Sepolia Testnet ID
+            alert("Please switch to the Sepolia testnet in MetaMask.");
+            return;
+        }
+
+        // Prepare the transaction
+        const price = parseFloat(amount) * 1e18; // Convert to Wei (1 ETH = 1e18 Wei)
+        const transaction = {
+            to: '0x2C9228C4fF8c0EEee1C5d1B161f956A05fb7008C', // Replace with property owner wallet address
+            value: ethers.utils.parseUnits(price.toString(), 'wei'), // Convert amount to Wei
+        };
+
+        // Send the transaction
+        const txResponse = await signer.sendTransaction(transaction);
+        console.log("Transaction Hash:", txResponse.hash);
+
+        // Wait for the transaction to be mined
+        await txResponse.wait();
+
+        // Now that the transaction is successful, send details to backend
+        const response = await fetch('/transaction/', {  // Change to your endpoint
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                property_id: propertyId,
+                amount: amount,
+                transaction_hash: txResponse.hash,
+            }),
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            alert(result.message); // Display success message from server
+        } else {
+            alert(`Transaction failed: ${result.message}`); // Display failure message from server
+        }
+
+    } catch (error) {
+        console.error("Error in MetaMask payment:", error);
+
+        // Handle specific error: insufficient funds
+        if (error.code === -32000 && error.message.includes("insufficient funds")) {
+            alert("Insufficient funds for gas. Please check your MetaMask balance.");
+        }
+        // Handle user denying the transaction
+        else if (error.message.includes("User denied transaction signature")) {
+            alert("Transaction was cancelled by the user.");
+        }
+        // General error handler
+        else {
+            alert("An error occurred while processing the payment. Please try again.");
+        }
+    }
+}
+
+// Attach the payWithMetaMask function to the button click event
+document.getElementById('pay-button').addEventListener('click', payWithMetaMask);
+
+
 </script>
 
 
