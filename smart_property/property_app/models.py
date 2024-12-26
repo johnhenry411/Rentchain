@@ -28,7 +28,7 @@ class User(AbstractUser):
     ]
     role = models.CharField(max_length=10, choices=ROLES, default='client')
     wallet_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-
+    wallet_address = models.CharField(max_length=42, blank=True, null=True)  # Assuming Ethereum-like addresses
    
     groups = models.ManyToManyField(
         Group,
@@ -171,7 +171,7 @@ class Review(models.Model):
 
 class Profile(models.Model):
     user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,  # Link to the User model
+        settings.AUTH_USER_MODEL,  
         on_delete=models.CASCADE,
         related_name='profile'
     )
@@ -215,6 +215,12 @@ class Proposal(models.Model):
     
         random_string = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
         return f"{user.username}.{random_string}"
+
+    def payment_status(self):
+        """Dynamically calculate the payment status."""
+        if self.proposal.proposed_price <= self.paid_amount:
+            return "PAID"
+        return "PENDING"
 
     def sign_contract(self):
         if self.status == 'accepted':
@@ -277,6 +283,7 @@ class Contract(models.Model):
     landlord_signature = models.CharField(max_length=100, null=True, blank=True)
     client_signature = models.CharField(max_length=100, null=True, blank=True)
     paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    payment_status = models.CharField(max_length=10, choices=Proposal.STATUS_CHOICES, default='pending')
 
     @property
     def payment_status(self):
@@ -284,7 +291,6 @@ class Contract(models.Model):
         if self.proposal.proposed_price <= self.paid_amount:
             return "PAID"
         return "PENDING"
-
 
     def generate_signature(self, user):
         """Generate a signature based on the username and a random string."""
@@ -295,16 +301,18 @@ class Contract(models.Model):
         random_string = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
         return f"{user.username}.{random_string}"
 
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+    def sign_contract(self):
+        """Generate signatures for the landlord and client and save the contract."""
+        if self.proposal.status == 'accepted' and not self.landlord_signature and not self.client_signature:
+            self.client_signature = self.generate_signature(self.client)
+            self.landlord_signature = self.generate_signature(self.landlord)
+            logging.debug(f"Generated Client Signature: {self.client_signature}")
+            logging.debug(f"Generated Landlord Signature: {self.landlord_signature}")
+            self.save()  # Save the contract
+            logging.info("Contract saved successfully!")
 
-def sign_contract(self):
-    if self.proposal.status == 'accepted' and not self.landlord_signature and not self.client_signature:
-        self.client_signature = self.generate_signature(self.client)
-        self.landlord_signature = self.generate_signature(self.landlord)
-        logging.debug(f"Generated Client Signature: {self.client_signature}")
-        logging.debug(f"Generated Landlord Signature: {self.landlord_signature}")
-        self.save()  # Save the contract
-        logging.info("Contract saved successfully!")
+    # Set up logging
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 logger = logging.getLogger(__name__)
   
@@ -418,3 +426,11 @@ class Transaction(models.Model):
     amount=property_obj.price,  
     property=property_obj
 )
+
+    # def update_payment_status(self):
+    #     """Update the payment status based on the paid amount and proposed price."""
+    #     if self.paid_amount >= self.proposed_price:
+    #         self.payment_status = 'Paid'
+    #     else:
+    #         self.payment_status = 'Pending'
+    #     self.save()

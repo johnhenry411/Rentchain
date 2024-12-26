@@ -75,17 +75,29 @@
         </div>
         <p>
             Payment Status:
-            <span style="color: {% if contract.payment_status == 'PAID' %}green{% else %}red{% endif %};">
+            <span style="color: {% if status == 'PAID' %}green{% else %}red{% endif %};" title="Payment Status: {{ status }}">
                 {{ contract.payment_status }}
                 <i class="fas {% if contract.payment_status == 'PAID' %}fa-check-circle{% else %}fa-clock{% endif %}"></i>
             </span>
+            <span class="btn-sm 
+            {% if contract.payment_status == 'PAID' %}
+                btn-success  <!-- Green for accepted -->
+           
+            {% else %}
+                btn-secondary  <!-- Neutral for other statuses -->
+            {% endif %}
+        ">
+            {{ contract.payment_status|capfirst }} <!-- Capitalized status text -->
+        </span>
+            {{contract.proposal.paid_amount}}-{{contract.proposal.proposed_price}}
+            {{status}}
         </p>
-        
+       
 
 
         <h2 class="section-title">1. The Parties Involved</h2>
         <div class="clause">
-            This agreement is entered into by <strong>{{ landlord }}</strong> (hereinafter referred to as "The Benevolent Overlord") and <strong>{{ client }}</strong> (hereinafter referred to as "The Appreciative Dweller").
+            This agreement is entered into by <strong>{{ landlord.first_name }} {{landlord.last_name}}</strong> (hereinafter referred to as "The Benevolent Overlord") and <strong>{{ client.first_name }} {{client.last_name}}</strong> (hereinafter referred to as "The Appreciative Dweller").
         </div>
 
         <h2 class="section-title">2. The Property</h2>
@@ -160,5 +172,10 @@
     <footer>
         This agreement is legally binding. Violations will result in strongly worded texts and sad emojis,with some untimely trips to a courthouse.
     </footer>
+
+    <div>
+        Contract ID: {{ contract.id }}
+        Paid Amount: {{ contract.paid_amount }}
+    </div>
 
 {%endblock%}

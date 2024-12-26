@@ -1,5 +1,5 @@
 from . import views
-from .views import ClientDashboardView, LandlordDashboardView, AdminDashboardView,update_profile,PropertyEditView, PropertyDeleteView,submit_proposal,view_contract,initiate_transaction,delete_user,WalletListView,TransactionListView,ContractListView,ProposalListView,PropertyListView, logout_view
+from .views import ClientDashboardView, LandlordDashboardView, AdminDashboardView,PropertyEditView, PropertyDeleteView,submit_proposal,view_contract,initiate_transaction,delete_user,WalletListView,TransactionListView,ContractListView,ProposalListView,PropertyListView, logout_view, update_profile_view
 from django.urls import path
 
 urlpatterns = [
@@ -9,7 +9,6 @@ urlpatterns = [
     path('admins/dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),
     path('signup/', views.client_signup_view, name='signup'),
     path('login/', views.login_view, name='login'),
-    path('update-profile/', update_profile, name='update_profile'),
     path('landlord/property/edit/<int:property_id>/', PropertyEditView.as_view(), name='property_edit'),
     path('landlord/property/delete/<int:property_id>/', PropertyDeleteView.as_view(), name='property_delete'),
     path('property/<int:id>/', views.property_detail, name='property_detail'),
@@ -19,7 +18,6 @@ urlpatterns = [
     path('wallet/', views.wallet_detail, name='wallet_detail'),
     path('wallet/create/', views.create_wallet, name='create_wallet'),
     path('transaction-history/', views.transaction_history, name='transaction_history'),
-    # path('transaction/pay-property/', views.pay_property, name='pay_property'),
     path('transactions/status/', views.transaction_status, name='transaction_status'),
     path('delete-user/<int:user_id>/', delete_user, name='delete_user'),
     path('wallets/', WalletListView.as_view(), name='manage_wallets'),
@@ -28,6 +26,5 @@ urlpatterns = [
     path('Proposals/', ProposalListView.as_view(), name='view_proposals'),
     path('admins/properties/', PropertyListView.as_view(), name='property_list'),
     path('logout/', logout_view, name='logout'),
-
-
-    ]
+    path('profile/update/', update_profile_view, name='update_profile'),
+]

@@ -7,10 +7,11 @@ from django.contrib.auth.forms import AuthenticationForm
 class SignUpForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput, label="Password")
     confirm_password = forms.CharField(widget=forms.PasswordInput, label="Confirm Password")
+    wallet_address = forms.CharField(max_length=42, required=True, label="Wallet Address")  # Assuming Ethereum-like addresses
 
     class Meta:
         model = User
-        fields = ['username','first_name','last_name', 'email', 'password', 'role']
+        fields = ['username','first_name','last_name', 'email', 'password', 'role', 'wallet_address']
 
     def clean(self):
         cleaned_data = super().clean()
@@ -18,6 +19,7 @@ class SignUpForm(forms.ModelForm):
         confirm_password = cleaned_data.get("confirm_password")
         if password != confirm_password:
             self.add_error('confirm_password', "Passwords do not match!")
+        return cleaned_data  # Ensure this is returned
 class CustomLoginForm(AuthenticationForm):
     username = forms.CharField(
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'A unique name to be used for transactions'})
@@ -27,11 +29,19 @@ class CustomLoginForm(AuthenticationForm):
     )
     
 from .models import Profile
+from django.contrib.auth import get_user_model
 
-class ProfileUpdateForm(forms.ModelForm):
+User = get_user_model()
+
+class UserProfileForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'email',  'wallet_address']  
+
+class ProfileForm(forms.ModelForm):
     class Meta:
         model = Profile
-        fields = ['bio', 'profile_picture', 'phone_number', 'address']
+        fields = ['bio','phone_number','address', 'profile_picture']  
 
 from django import forms
 from .models import Property
@@ -56,6 +66,23 @@ class PropertyForm(forms.ModelForm):
             'utilities',
             'contact_number',
         ]
+        widgets = {
+            'category': forms.Select(attrs={'class': 'form-control'}),
+            't_type': forms.Select(attrs={'class': 'form-control'}),
+            'status': forms.Select(attrs={'class': 'form-control'}),
+            'furnishing_status': forms.Select(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+            'price': forms.NumberInput(attrs={'class': 'form-control'}),
+            'location': forms.TextInput(attrs={'class': 'form-control'}),
+            'number_of_units': forms.NumberInput(attrs={'class': 'form-control'}),
+            'beds': forms.NumberInput(attrs={'class': 'form-control'}),
+            'baths': forms.NumberInput(attrs={'class': 'form-control'}),
+            'size': forms.NumberInput(attrs={'class': 'form-control'}),
+            'nearby_features': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'utilities': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'contact_number': forms.TextInput(attrs={'class': 'form-control'}),
+        }
 
         
 class PropertyImageForm(forms.ModelForm):
@@ -127,3 +154,4 @@ class WalletForm(forms.ModelForm):
     class Meta:
         model = Wallet
         fields = ['balance']
+

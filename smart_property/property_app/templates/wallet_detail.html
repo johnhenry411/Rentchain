@@ -8,8 +8,11 @@
     <div class="card-body">
       {% if wallet %}
         <h4>Balance: KSH. {{ wallet.balance }}</h4>
+        <h5>wallet username: {{user.username}}
+
+        <h5>wallet address: {{wallet_address}}
       {% else %}
-        <p>You don't have a wallet yet. Please create one to start managing your transactions.</p>
+        <p>You don't have a wallet yet. Please request one from admin to start making transactions.</p>
       {% endif %}
     </div>
   </div>

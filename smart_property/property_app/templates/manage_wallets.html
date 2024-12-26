@@ -8,6 +8,8 @@
                 <th>#</th>
                 <th>Owner</th>
                 <th>Balance</th>
+                <th>wallet Address</th>
+
             </tr>
         </thead>
         <tbody>
@@ -16,6 +18,8 @@
                     <td>{{ forloop.counter }}</td>
                     <td>{{ wallet.user.username }}</td>
                     <td>Ksh.{{ wallet.balance }}</td>
+                    <td>{{ wallet.user.wallet_address}}</td>
+
                 </tr>
             {% endfor %}
         </tbody>

@@ -8,9 +8,9 @@ from django.shortcuts import render, redirect
 from django.http import HttpResponseForbidden
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
-from .models import User,Lease,Property, PropertyImage, Proposal,Transaction,Wallet,Contract,Review
+from .models import User,Lease,Property, PropertyImage, Proposal,Transaction,Wallet,Contract,Review,Profile
 from property_app.utils import get_dashboard_url
-from .forms import ProfileUpdateForm,PropertyForm, PropertyImageForm,ProposalForm  
+from .forms import PropertyForm, PropertyImageForm,ProposalForm  
 from django.forms import modelformset_factory
 from django.views import View
 from django.contrib import messages
@@ -21,6 +21,7 @@ from django.db.models import Q
 import logging
 from django.contrib.auth import logout
 from django.views.decorators.csrf import csrf_exempt
+from datetime import date, timedelta
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG) 
@@ -36,15 +37,26 @@ def role_required(role):
 
 @method_decorator(login_required, name='dispatch')
 @method_decorator(role_required('client'), name='dispatch')
+
 class ClientDashboardView(TemplateView):
-    template_name = 'client_dashboard.html'  # Fixed typo in 'template_name'
+    template_name = 'client_dashboard.html'
+    
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # context['leases'] = Lease.objects.filter(tenant=self.request.user)
-        # context['reviews'] = Review.objects.filter(tenant=self.request.user)
-        context['proposals'] = Proposal.objects.filter(proposer=self.request.user).select_related('property')
+        user = self.request.user
+        # Fetch or create the user's profile
+        profile = get_object_or_404(Profile, user=user)
+        
+        # Add data to context
+        context['proposals'] = Proposal.objects.filter(proposer=user).select_related('property')
+        context['user'] = user
+        context['profile'] = profile
         return context
+
 
 
 
@@ -111,14 +123,15 @@ def client_signup_view(request):
     if request.method == 'POST':
         form = SignUpForm(request.POST)
         if form.is_valid():
-            # Create the user object without saving to DB yet
             user = form.save(commit=False)
-            user.set_password(form.cleaned_data['password'])  # Set the password
-            user.save()  # Save the user first
+            user.set_password(form.cleaned_data['password'])
+            user.save()
 
-            user.setup_roles()  # Now call setup_roles() after saving the user
+            # Create a profile for the new user
+            Profile.objects.create(user=user)  # Create the profile instance
 
-            return redirect('login')  # Redirect to login page after successful signup
+            user.setup_roles()  # Call setup_roles() after saving the user
+            return redirect('login')
     else:
         form = SignUpForm()
     
@@ -179,18 +192,7 @@ def base_page(request):
     }
     return render(request, 'base.html', context)
 
-@login_required
-def update_profile(request):
-    profile = request.user.profile
-    if request.method == 'POST':
-        form = ProfileUpdateForm(request.POST, request.FILES, instance=profile)
-        if form.is_valid():
-            form.save()
-            return redirect('profile')  
-    else:
-        form = ProfileUpdateForm(instance=profile)
 
-    return render(request, 'update_profile.html', {'form': form})
 
 @method_decorator(login_required, name='dispatch')
 @method_decorator(role_required('landlord'), name='dispatch')
@@ -340,6 +342,7 @@ def property_detail(request, id):
     property = get_object_or_404(Property, id=id)
     return render(request, 'property_detail.html', {'property': property})
 def submit_proposal(request, property_id):
+    logger.debug(f"Starting proposal submission for property ID: {property_id}")
     if not request.user.is_authenticated:
         return redirect('login')
 
@@ -353,16 +356,19 @@ def submit_proposal(request, property_id):
             proposal.proposer = request.user
             proposal.save()
 
-            # Create the related contract using the proposal data
-            Contract.objects.create(
+            # Create the related contract
+            contract = Contract.objects.create(
                 proposal=proposal,
                 landlord=property.landlord,
                 client=request.user,
-                property=property,
+                property_ref=property,
                 lease_value=form.cleaned_data['proposed_price'],
                 start_date=form.cleaned_data.get('start_date', None),
                 end_date=form.cleaned_data.get('end_date', None),
             )
+
+            logger.debug(f"Proposal created with ID: {proposal.id}, attempting to create contract...")
+            logger.debug(f"Contract created with ID: {contract.id}")
 
             return redirect('property_detail', id=property.id)
     else:
@@ -373,46 +379,76 @@ def submit_proposal(request, property_id):
 from django.db import transaction
 
 def accept_proposal(request, proposal_id):
-    with transaction.atomic():
-        proposal = get_object_or_404(Proposal, id=proposal_id)
-        proposal.status = 'accepted'
-        proposal.save()
+    try:
+        with transaction.atomic():
+            proposal = get_object_or_404(Proposal, id=proposal_id)
+            proposal.status = 'accepted'
+            proposal.save()
 
-        contract, created = Contract.objects.get_or_create(
-             proposal=proposal,
-            defaults={
-                 'landlord': proposal.property.landlord,
-                 'client': proposal.proposer,
-                 'property': proposal.property,
-                 'lease_value': proposal.proposed_price,
-                 'start_date': date.today(),
-                 'end_date': date.today() + timedelta(days=365),
-                 'status': 'accepted',
-             }, 
-)
+            # Create or fetch the contract
+            contract, created = Contract.objects.get_or_create(
+                proposal=proposal,
+                defaults={
+                    'landlord': proposal.property.landlord,
+                    'client': proposal.proposer,
+                    'property': proposal.property,
+                    'lease_value': proposal.proposed_price,
+                    'start_date': date.today(),
+                    'end_date': date.today() + timedelta(days=365),
+                    'status': 'accepted',
+                },
+            )
 
-# Call sign_contract to generate signatures
-    contract.sign_contract()
-    return redirect('view_contract', proposal_id=proposal.id)
+            if created:
+                logger.info(f"Contract created for Proposal ID: {proposal_id}")
+            else:
+                logger.info(f"Contract already exists for Proposal ID: {proposal_id}")
+
+            # Call sign_contract to generate signatures
+            contract.sign_contract()
+
+        return redirect('view_contract', proposal_id=proposal.id)
+    except Exception as e:
+        logger.error(f"Error accepting proposal ID {proposal_id}: {e}")
+        messages.error(request, "An error occurred while accepting the proposal.")
+        return redirect('proposal_list')  # Redirect to a fallback page
+
 
 
 def view_contract(request, proposal_id):
+    logger.debug(f"Fetching contract for proposal ID: {proposal_id}")
+
     if not request.user.is_authenticated:
         return HttpResponseForbidden("You must be logged in to view this contract.")
 
     proposal = get_object_or_404(Proposal, id=proposal_id)
-    contract = get_object_or_404(Contract, proposal=proposal)
+    contract, created = Contract.objects.get_or_create(
+        proposal=proposal,
+        defaults={
+            "landlord": proposal.property.landlord,
+            "client": proposal.proposer,
+            "property_ref": proposal.property,
+            "lease_value": proposal.proposed_price,
+            "start_date": proposal.start_date,
+            "end_date": proposal.end_date,
+            "paid_amount": Contract.paid_amount,
+            "status": Contract.payment_status,
+        }
+    )
 
-    logger.debug(f"Request User: {request.user}, Landlord: {contract.landlord}, Client: {contract.client}")
+    if created:
+        logger.info(f"Contract created for proposal ID: {proposal_id}")
+        contract.sign_contract()
 
+    # Check if the current user is either the landlord or the client
     if request.user != contract.landlord and request.user != contract.client:
-        logger.warning("Unauthorized access attempt.")
+        logger.warning(f"Unauthorized access attempt by user: {request.user}")
         return render(request, 'transaction_status.html', {
-                    'message': "You are Not authorized to view this contract",
-                    'transaction': None
-                })
+            'message': "You are not authorized to view this contract.",
+            'transaction': None
+        })
 
-    # Prepare contract data
+    # Prepare the context to render the contract view
     context = {
         'contract': contract,
         'property': contract.property_ref,
@@ -423,9 +459,16 @@ def view_contract(request, proposal_id):
         'payment_status': contract.payment_status,
         'start_date': contract.start_date,
         'end_date': contract.end_date,
+        'contract_status': contract.payment_status,  # Status comes from the Contract itself
     }
 
+    # Log the contract details if found
+    logger.debug(f"Contract found: {contract.id}")
+
+    # Render the contract template
     return render(request, 'contract.html', context)
+
+
 
 
 from django.db import transaction as db_transaction
@@ -520,43 +563,40 @@ def initiate_transaction(request):
                 if amount <= 0:
                     raise ValueError("Invalid transaction amount.")
             except (ValueError, TypeError):
-                        return render(request, 'transaction_status.html', {
-                            'message': "Transaction Failed: Invalid amount.",
-                            'transaction': None
-                        })
+                return render(request, 'transaction_status.html', {
+                    'message': "Transaction Failed: Invalid amount.",
+                    'transaction': None
+                })
 
-    # Authenticate the tenant's password
-   # Authenticate the tenant's password
             password = request.POST.get("password")
             if not request.user.check_password(password):
-                    return render(request, 'transaction_status.html', {
-                             'message': "Transaction Failed: Incorrect password.",
-                             'transaction': None
-                    })
+                return render(request, 'transaction_status.html', {
+                    'message': "Transaction Failed: Incorrect password.",
+                    'transaction': None
+                })
+
             # Fetch the contract and wallets
             contract = Contract.objects.filter(property_ref=property_id, client=request.user).first()
-            proposal=Proposal.objects.filter(property_id=property_id,proposer=request.user).first()
+            proposal = Proposal.objects.filter(property_id=property_id, proposer=request.user).first()
             if not contract:
-                 return render(request, 'transaction_status.html', {
-                'message': "Transaction Failed: No contract found for this property.",
-                'transaction': None
-            })
+                return render(request, 'transaction_status.html', {
+                    'message': "Transaction Failed: No contract found for this property.",
+                    'transaction': None
+                })
 
             tenant_wallet, _ = Wallet.objects.get_or_create(user=request.user)
             owner_wallet, _ = Wallet.objects.get_or_create(user=contract.landlord)
-        
-    # Verify tenant's balance
+
+            # Verify tenant's balance
             if tenant_wallet.balance < amount:
                 return render(request, 'transaction_status.html', {
                     'message': "Transaction Failed: Insufficient balance.",
                     'transaction': None
                 })
-    # Perform the transaction
-          
 
+            # Perform the transaction
             if contract.paid_amount >= contract.proposal.proposed_price:
-                        contract.proposal.payment_status = "Paid"
-                        message = "Payment cancelled. The property is totally paid."
+                message = "Payment cancelled. The property is totally paid."
             else:
                 tenant_wallet.balance -= amount
                 owner_wallet.balance += amount
@@ -565,31 +605,40 @@ def initiate_transaction(request):
 
                 # Proceed with payment processing
                 contract.paid_amount += amount
+                contract.proposal.update_payment_status()  # Update the payment status based on the new paid amount
+
                 remaining_amount = contract.proposal.proposed_price - contract.paid_amount
                 if contract.paid_amount >= contract.proposal.proposed_price:
-                     contract.proposal.payment_status = "Paid"
-                     message = "Payment successful. You have cleared the lease value."
+                    message = "Payment successful. You have cleared the lease value."
                 else:
                     message = f"Payment successful. Remaining amount to be paid: Ksh {remaining_amount:.2f}"
+
                 transaction_record = Transaction.objects.create(
                     sender=request.user,
-                receiver=contract.landlord,
-                amount=amount,
-                reference=f"TXN-{uuid.uuid4().hex[:8].upper()}",
-                status='completed',
-                property_id=property_id  # You might need to adjust this based on your model
-            )
+                    receiver=contract.landlord,
+                    amount=amount,
+                    reference=f"TXN-{uuid.uuid4().hex[:8].upper()}",
+                    status='completed',
+                    property_id=property_id
+                )
                 proposal.save()
             contract.save()
 
             return render(request, 'transaction_status.html', {
-                        'message': message,
-                        'transaction': None
-             }) 
+                'message': message,
+                'transaction': None
+            })
 
-# Render the transaction form for non-POST requests
+        # If POST data does not match expected keys
+        return render(request, 'transaction_status.html', {
+            'message': "Invalid transaction request.",
+            'transaction': None
+        })
+
+    # Render the transaction form for non-POST requests or if no action is taken in POST
     properties = Property.objects.all() 
-    return render(request, 'transaction_form.html', {'properties': properties})  
+    return render(request, 'transaction_form.html', {'properties': properties})
+
 
 # View details of the wallet
 @login_required
@@ -599,7 +648,14 @@ def wallet_detail(request):
     except Wallet.DoesNotExist:
         wallet = None  # Handle if no wallet exists for this user
 
-    return render(request, 'wallet_detail.html', {'wallet': wallet})
+    # Fetch the wallet address from the User model
+    wallet_address = request.user.wallet_address  # Assuming 'wallet_address' is a field on the User model
+
+    # Pass the wallet and wallet address to the template
+    return render(request, 'wallet_detail.html', {
+        'wallet': wallet,
+        'wallet_address': wallet_address
+    })
 
 from django.contrib.auth.decorators import user_passes_test
 
@@ -794,3 +850,64 @@ def metamask_payment(request):
             # Generic error handling
             return JsonResponse({'message': f'Transaction Failed: {str(e)}'}, status=400)
 
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from .forms import UserProfileForm, ProfileForm
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from .models import Profile
+from .forms import UserProfileForm, ProfileForm
+
+from django.contrib import messages
+from django.shortcuts import redirect, render
+from django.contrib.auth.decorators import login_required
+from .forms import UserProfileForm, ProfileForm
+from .models import Profile
+
+@login_required
+def update_profile_view(request):
+    user = request.user
+    # Retrieve or create the user's profile
+    profile, created = Profile.objects.get_or_create(user=user)
+    if created:
+        print(f"A new profile was created for user: {user.username}")
+    else:
+        print(f"Existing profile retrieved for user: {user.username}")
+
+    if request.method == 'POST':
+        print("Processing POST request...")
+        print("POST data:", request.POST)
+        print("FILES data:", request.FILES)
+
+        # Initialize forms with POST data and profile/user instances
+        user_form = UserProfileForm(request.POST, instance=user)
+        profile_form = ProfileForm(request.POST, request.FILES, instance=profile)
+
+        # Check if forms are valid
+        if user_form.is_valid() and profile_form.is_valid():
+            print("Both forms are valid. Saving data...")
+            user_form.save()
+            profile_form.save()
+            print("User and profile successfully updated.")
+
+            # Add a success message
+            messages.success(request, 'Your profile has been successfully updated.')
+
+            # Redirect to client dashboard after successful update
+            return redirect('client_dashboard')  # Redirect to a profile page or success page
+        else:
+            # Log form errors for debugging
+            print("Form validation failed:")
+            print("User form errors:", user_form.errors)
+            print("Profile form errors:", profile_form.errors)
+    else:
+        print("Rendering form for GET request...")
+        # Pre-fill forms with existing data
+        user_form = UserProfileForm(instance=user)
+        profile_form = ProfileForm(instance=profile)
+
+    # Render the update profile page
+    return render(request, 'update_profile.html', {
+        'user_form': user_form,
+        'profile_form': profile_form
+    })
