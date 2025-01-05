@@ -15,7 +15,7 @@
             <h3>hey there {{request.user.first_name}},what'd you like to to?</h3>
             <button id="send-money-option" class="btn">Send Money</button>
             <button id="pay-property-option" class="btn">Pay for Property</button>
-            <button id="pay-with-metamask-form" class="btn">Pay for MetaMask</button>
+            <button id="pay-with-metamask-option" class="btn">Pay with MetaMask</button>
 
         </div>
 
@@ -52,7 +52,7 @@
             </div>
             <button type="button" id="pay-property-btn" class="btn">Proceed</button>
         </form>
-        <div id="pay-with-metamask-form" class="transaction-form" style="display: block;">
+        <div id="pay-with-metamask-form" class="transaction-form" action="/transaction/"method="POST"style="display: none;">
             <h3>Pay with MetaMask</h3>
             
             <!-- Property Selection Dropdown -->
@@ -97,8 +97,10 @@
 // Elements for toggling between forms
 const sendMoneyOption = document.getElementById("send-money-option");
 const payPropertyOption = document.getElementById("pay-property-option");
+const payMetamaskOption = document.getElementById("pay-with-metamask-option");
 const sendMoneyForm = document.getElementById("send-money-form");
 const payPropertyForm = document.getElementById("pay-property-form");
+const payMetamaskForm = document.getElementById("pay-with-metamask-form");
 
 // Modal elements
 const modal = document.getElementById("password-modal");
@@ -108,15 +110,26 @@ const passwordInput = document.getElementById("password");
 const sendMoneyBtn = document.getElementById("send-money-btn");
 const payPropertyBtn = document.getElementById("pay-property-btn");
 
+
 // Show Send Money Form
 sendMoneyOption.onclick = function () {
     sendMoneyForm.style.display = "block";
     payPropertyForm.style.display = "none";
+    payMetamaskForm.style.display = "none";
+
 };
 
 // Show Pay for Property Form
 payPropertyOption.onclick = function () {
+    payMetamaskForm.style.display = "none";
+
     payPropertyForm.style.display = "block";
+    sendMoneyForm.style.display = "none";
+};
+
+payMetamaskOption.onclick = function () {
+    payMetamaskForm.style.display = "block";
+    payPropertyForm.style.display = "none";
     sendMoneyForm.style.display = "none";
 };
 

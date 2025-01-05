@@ -38,24 +38,31 @@ def role_required(role):
 @method_decorator(login_required, name='dispatch')
 @method_decorator(role_required('client'), name='dispatch')
 
+@method_decorator(login_required, name='dispatch')
+@method_decorator(role_required('client'), name='dispatch')
 class ClientDashboardView(TemplateView):
     template_name = 'client_dashboard.html'
-    
+
     @method_decorator(login_required)
     def dispatch(self, *args, **kwargs):
         return super().dispatch(*args, **kwargs)
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
+        
         # Fetch or create the user's profile
         profile = get_object_or_404(Profile, user=user)
+        
+        # Properties owned by the current user
+        context['owned_properties'] = Property.objects.filter(current_owner=user)
         
         # Add data to context
         context['proposals'] = Proposal.objects.filter(proposer=user).select_related('property')
         context['user'] = user
         context['profile'] = profile
         return context
+
 
 
 
@@ -119,6 +126,10 @@ class ProposalListView(View):
         proposals = Proposal.objects.all() 
         return render(request, self.template_name, {'proposals': proposals})
 
+import qrcode
+from io import BytesIO
+from django.core.files.base import ContentFile
+
 def client_signup_view(request):
     if request.method == 'POST':
         form = SignUpForm(request.POST)
@@ -127,9 +138,24 @@ def client_signup_view(request):
             user.set_password(form.cleaned_data['password'])
             user.save()
 
-            # Create a profile for the new user
-            Profile.objects.create(user=user)  # Create the profile instance
+            # Create the profile instance
+            profile = Profile.objects.create(user=user)
 
+            # Generate QR code
+            qr_data = f"http://localhost:8000/initiate_transaction/qr/{user.id}"  # Pass user ID in the URL
+            qr = qrcode.make(qr_data)
+
+            # Save QR code to the profile
+            try:
+                qr_io = BytesIO()
+                qr.save(qr_io, format='PNG')
+                qr_file_name = f"{user.username}_qr.png"
+                profile.qr_code.save(qr_file_name, ContentFile(qr_io.getvalue()), save=True)
+                print(f"QR code saved successfully: {qr_file_name}")
+            except Exception as e:
+                print(f"Error generating QR code: {e}")
+
+            # Additional setup for the user (setup_roles is assumed to be a method in your user model)
             user.setup_roles()  # Call setup_roles() after saving the user
             return redirect('login')
     else:
@@ -204,7 +230,7 @@ class LandlordDashboardView(View):
         proposals = Proposal.objects.filter(property__in=properties).select_related('proposer', 'property')
 
         # Create property image formset
-        PropertyImageFormSet = modelformset_factory(PropertyImage, form=PropertyImageForm, extra=3)
+        PropertyImageFormSet = modelformset_factory(PropertyImage, form=PropertyImageForm, extra=10)
         property_form = PropertyForm()
         image_formset = PropertyImageFormSet(queryset=PropertyImage.objects.none())
 
@@ -349,7 +375,8 @@ def submit_proposal(request, property_id):
     property = get_object_or_404(Property, id=property_id)
 
     if request.method == 'POST':
-        form = ProposalForm(request.POST)
+        # Pass the property price to the form
+        form = ProposalForm(request.POST, property_price=property.price)
         if form.is_valid():
             proposal = form.save(commit=False)
             proposal.property = property
@@ -372,7 +399,8 @@ def submit_proposal(request, property_id):
 
             return redirect('property_detail', id=property.id)
     else:
-        form = ProposalForm()
+        # Pass the property price to the form for GET requests
+        form = ProposalForm(property_price=property.price)
 
     return render(request, 'submit_proposal.html', {'form': form, 'property': property})
 
@@ -483,9 +511,44 @@ from django.db import transaction
 from decimal import Decimal
 import uuid
 
+import qrcode
+from io import BytesIO
+from django.core.files.base import ContentFile
+from decimal import Decimal
+import uuid
+from django.contrib.auth.decorators import login_required
+from django.db import transaction as db_transaction
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate
+from .models import User, Wallet, Transaction, Contract, Proposal, Property
+
 @login_required
-@transaction.atomic
-def initiate_transaction(request):
+@db_transaction.atomic
+def initiate_transaction(request, user_id=None, transaction_id=None):
+    # Handle QR code-based transaction initiation (with user_id and transaction_id in the URL)
+    if user_id and transaction_id:
+        try:
+            # Fetch the user and transaction based on URL parameters
+            user = get_object_or_404(User, id=user_id)
+            transaction = get_object_or_404(Transaction, id=transaction_id)
+
+            # Ensure that the transaction belongs to the user
+            if transaction.sender != user:
+                return render(request, 'transaction_status.html', {
+                    'message': "Transaction Failed: This transaction does not belong to you.",
+                    'transaction': None
+                })
+
+            # Return the transaction details page for QR code scan
+            return render(request, 'transaction_form.html', {'transaction': transaction})
+
+        except (User.DoesNotExist, Transaction.DoesNotExist):
+            return render(request, 'transaction_status.html', {
+                'message': "Transaction or User not found.",
+                'transaction': None
+            })
+
+    # Handle regular POST requests for both user-to-user and property payments
     if request.method == 'POST':
         # Handle user-to-user transaction
         if 'receiver' in request.POST:
@@ -542,6 +605,7 @@ def initiate_transaction(request):
             sender_wallet.save()
             receiver_wallet.save()
 
+            # Record the transaction
             transaction_record = Transaction.objects.create(
                 sender=request.user,
                 receiver=receiver,
@@ -549,6 +613,14 @@ def initiate_transaction(request):
                 reference=f"TXN-{uuid.uuid4().hex[:8].upper()}",
                 status='completed'
             )
+
+            # Generate and save the QR code
+            qr_data = f"Transaction ID: {transaction_record.id}, Amount: {transaction_record.amount}, Receiver: {receiver.username}"
+            qr = qrcode.make(qr_data)
+            qr_io = BytesIO()
+            qr.save(qr_io, format='PNG')
+            qr_file_name = f"transaction_{transaction_record.id}_qr.png"
+            transaction_record.qr_code.save(qr_file_name, ContentFile(qr_io.getvalue()), save=True)
 
             return render(request, 'transaction_status.html', {
                 'message': "Transaction Successful.",
@@ -567,21 +639,26 @@ def initiate_transaction(request):
                     'message': "Transaction Failed: Invalid amount.",
                     'transaction': None
                 })
-
+            
             password = request.POST.get("password")
             if not request.user.check_password(password):
                 return render(request, 'transaction_status.html', {
                     'message': "Transaction Failed: Incorrect password.",
                     'transaction': None
                 })
+                
 
             # Fetch the contract and wallets
             contract = Contract.objects.filter(property_ref=property_id, client=request.user).first()
-            proposal = Proposal.objects.filter(property_id=property_id, proposer=request.user).first()
             if not contract:
                 return render(request, 'transaction_status.html', {
                     'message': "Transaction Failed: No contract found for this property.",
                     'transaction': None
+                })
+            if contract.paid_amount >= contract.lease_value:
+                return render(request,'transaction_status.html',{
+                   'message': "the contract is fully settled",
+                    'transaction': None 
                 })
 
             tenant_wallet, _ = Wallet.objects.get_or_create(user=request.user)
@@ -589,47 +666,48 @@ def initiate_transaction(request):
 
             # Verify tenant's balance
             if tenant_wallet.balance < amount:
-                return render(request, 'transaction_status.html', {
-                    'message': "Transaction Failed: Insufficient balance.",
-                    'transaction': None
-                })
-
-            # Perform the transaction
-            if contract.paid_amount >= contract.proposal.proposed_price:
-                message = "Payment cancelled. The property is totally paid."
-            else:
-                tenant_wallet.balance -= amount
-                owner_wallet.balance += amount
-                tenant_wallet.save()
-                owner_wallet.save()
-
-                # Proceed with payment processing
-                contract.paid_amount += amount
-                contract.proposal.update_payment_status()  # Update the payment status based on the new paid amount
-
-                remaining_amount = contract.proposal.proposed_price - contract.paid_amount
-                if contract.paid_amount >= contract.proposal.proposed_price:
-                    message = "Payment successful. You have cleared the lease value."
-                else:
-                    message = f"Payment successful. Remaining amount to be paid: Ksh {remaining_amount:.2f}"
-
                 transaction_record = Transaction.objects.create(
                     sender=request.user,
                     receiver=contract.landlord,
                     amount=amount,
                     reference=f"TXN-{uuid.uuid4().hex[:8].upper()}",
-                    status='completed',
-                    property_id=property_id
+                    status='failed'
                 )
-                proposal.save()
+                return render(request, 'transaction_status.html', {
+                    'message': "Transaction Failed: Insufficient Funds.",
+                    'transaction': transaction_record
+                })
+            
+            # Perform the transaction
+            tenant_wallet.balance -= amount
+            owner_wallet.balance += amount
+            tenant_wallet.save()
+            owner_wallet.save()
+
+            # Update contract and record transaction
+            contract.paid_amount += amount
             contract.save()
+            transaction_record = Transaction.objects.create(
+                sender=request.user,
+                receiver=contract.landlord,
+                amount=amount,
+                reference=f"TXN-{uuid.uuid4().hex[:8].upper()}",
+                status='completed',
+                property_id=property_id
+            )
+            # Generate and save the QR code
+            qr_data = f"Transaction ID: {transaction_record.id}, Property ID: {property_id}, Amount: {transaction_record.amount}"
+            qr = qrcode.make(qr_data)
+            qr_io = BytesIO()
+            qr.save(qr_io, format='PNG')
+            qr_file_name = f"transaction_{transaction_record.id}_qr.png"
+            transaction_record.qr_code.save(qr_file_name, ContentFile(qr_io.getvalue()), save=True)
 
             return render(request, 'transaction_status.html', {
-                'message': message,
-                'transaction': None
+                'message': "Payment successful.",
+                'transaction': transaction_record
             })
 
-        # If POST data does not match expected keys
         return render(request, 'transaction_status.html', {
             'message': "Invalid transaction request.",
             'transaction': None
@@ -638,6 +716,7 @@ def initiate_transaction(request):
     # Render the transaction form for non-POST requests or if no action is taken in POST
     properties = Property.objects.all() 
     return render(request, 'transaction_form.html', {'properties': properties})
+
 
 
 # View details of the wallet
@@ -700,15 +779,21 @@ def transaction_history(request):
     status_messages = {
         'completed': {
             'sender': {
-                'property': "Confirmed {reference}, KSH.{amount} sent to {receiver_first_name} {receiver_last_name} for property {property} on {timestamp}. Current balance: KSH.{current_balance}.",
-                'user': "Confirmed {reference}, KSH.{amount} sent to {receiver_first_name} {receiver_last_name} on {timestamp}. Current balance: KSH.{current_balance}."
+                'property':"Confirmed {reference}, KSH.{amount:,} sent to {receiver_first_name} {receiver_last_name} for property {property} on {timestamp}. Current balance: KSH.{current_balance:,}.",
+                'user': "Confirmed {reference}, KSH.{amount:,} sent to {receiver_first_name} {receiver_last_name} on {timestamp}. Current balance: KSH.{current_balance:,}."
             },
             'receiver': {
-                'property': "Confirmed {reference}, you have received KSH.{amount} from {sender_first_name} {sender_last_name} for property {property} on {timestamp}. Current balance: KSH.{current_balance}.",
-                'user': "Confirmed {reference}, you have received KSH.{amount} from {sender_first_name} {sender_last_name} on {timestamp}. Current balance: KSH.{current_balance}."
+                'property': "Confirmed {reference}, you have received KSH.{amount:,} from {sender_first_name} {sender_last_name} for property {property} on {timestamp}. Current balance: KSH.{current_balance:,}.",
+                'user': "Confirmed {reference}, you have received KSH.{amount:,} from {sender_first_name} {sender_last_name} on {timestamp}. Current balance: KSH.{current_balance:,}."
             }
         },
-        'failed': "Transaction Failed, {reference}! KSH.{amount} sent to {receiver_first_name} {receiver_last_name} for {property} on {timestamp} failed. Current balance: KSH.{current_balance}.",
+        'failed': {
+            'sender':{
+              'property':"Transaction Failed, {reference} You do not have enough funds in your wallet to send KSH.{amount:,}  to {receiver_first_name} {receiver_last_name} for {property} on {timestamp} failed. Current balance: KSH.{current_balance:,}.",               
+              'user':"Transaction Failed, {reference} You do not have enough funds in your wallet to send KSH.{amount:,}  to {receiver_first_name} {receiver_last_name} on {timestamp}. Current balance: KSH.{current_balance:,}."   
+            }
+            },
+            
         'pending': "Transaction Pending, {reference}. KSH.{amount} to {receiver_first_name} {receiver_last_name} for {property} is being processed. Current balance: KSH.{current_balance}.",
         'cancelled': "Transaction Cancelled, {reference}. KSH.{amount} to {receiver_first_name} {receiver_last_name} for {property} was not processed. Current balance: KSH.{current_balance}."
     }
@@ -744,16 +829,19 @@ def transaction_history(request):
                 )
                 current_balance += transaction.amount
                 
-        elif status in status_messages:  # Handle other statuses
-            message = base_message.format(
-                reference=transaction.reference,
-                amount=transaction.amount,
-                receiver_first_name=transaction.receiver.first_name,
-                receiver_last_name=transaction.receiver.last_name,
-                property=transaction.property.name if transaction.property else "this transaction",
-                timestamp=transaction.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-                current_balance=current_balance
-            )
+        elif status == 'failed':
+            if transaction.sender == user:
+                message_template = base_message['sender'][transaction_type]
+                message = message_template.format(
+                  reference=transaction.reference,
+                  amount=transaction.amount,
+                  receiver_first_name=transaction.receiver.first_name,
+                  receiver_last_name=transaction.receiver.last_name,
+                  property=transaction.property.name if transaction.property else "this transaction",
+                  timestamp=transaction.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                  current_balance=current_balance
+        )
+
         else:
             # Handle unknown statuses
             message = f"Unknown transaction status for {transaction.reference}. Current balance: KSH.{current_balance}."
@@ -911,3 +999,102 @@ def update_profile_view(request):
         'user_form': user_form,
         'profile_form': profile_form
     })
+
+
+@login_required
+def qr_transaction_view(request, user_id):
+    receiver = get_object_or_404(User, id=user_id)
+    if request.method == 'GET':
+        return render(request, 'transaction_form.html', {
+            'receiver': receiver.username
+        })
+        
+        
+@login_required
+@db_transaction.atomic
+def qr_transaction_view(request, user_id, transaction_id):
+    try:
+        user = get_object_or_404(User, id=user_id)
+        transaction = get_object_or_404(Transaction, id=transaction_id)
+
+        # Ensure the transaction belongs to the user
+        if transaction.sender != user:
+            return render(request, 'transaction_status.html', {
+                'message': "Transaction Failed: This transaction does not belong to you.",
+                'transaction': None
+            })
+
+        # Process the transaction if it hasn't been completed
+        if transaction.status == 'pending':
+            sender_wallet = Wallet.objects.get(user=transaction.sender)
+            receiver_wallet = Wallet.objects.get(user=transaction.receiver)
+
+            if sender_wallet.balance < transaction.amount:
+                transaction.status = 'failed'
+                transaction.save()
+                return render(request, 'transaction_status.html', {
+                    'message': "Transaction Failed: Insufficient Funds.",
+                    'transaction': transaction
+                })
+
+            # Update wallets
+            sender_wallet.balance -= transaction.amount
+            receiver_wallet.balance += transaction.amount
+            sender_wallet.save()
+            receiver_wallet.save()
+
+            # Update transaction status
+            transaction.status = 'completed'
+            transaction.save()
+
+            return render(request, 'transaction_status.html', {
+                'message': "Transaction Successful.",
+                'transaction': transaction
+            })
+
+        return render(request, 'transaction_status.html', {
+            'message': "Transaction already processed.",
+            'transaction': transaction
+        })
+
+    except (User.DoesNotExist, Transaction.DoesNotExist):
+        return render(request, 'transaction_status.html', {
+            'message': "Transaction or User not found.",
+            'transaction': None
+        })
+
+
+@login_required
+def transfer_property(request, property_id):
+    """
+    View to handle property ownership transfer.
+    """
+    property_obj = get_object_or_404(Property, id=property_id)
+    print(f"Property found: {property_obj.name}, ID: {property_obj.id}")
+
+    # Only the current landlord or admin can transfer ownership
+    if request.user != property_obj.landlord and not request.user.is_superuser:
+        print("Unauthorized access attempt.")
+        return HttpResponseForbidden("You are not authorized to transfer this property.")
+
+    if request.method == "POST":
+        new_owner_id = request.POST.get('new_owner')
+        print(f"New owner ID: {new_owner_id}")
+        try:
+            new_owner = User.objects.get(id=new_owner_id)
+            print(f"New owner found: {new_owner.username}, ID: {new_owner.id}")
+            property_obj.transfer_ownership(new_owner)
+            print(f"Ownership transferred to {new_owner.username}")
+            messages.success(request, f"Ownership of property '{property_obj.name}' has been transferred to {new_owner.username}.")
+        except User.DoesNotExist:
+            print("User does not exist.")
+            messages.error(request, "The selected user does not exist.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            messages.error(request, f"An error occurred: {e}")
+
+        return redirect('home')  # Redirect to a property detail page
+
+    # Render a confirmation page or form
+    users = User.objects.exclude(id=request.user.id)  # Exclude the current landlord from the dropdown
+    return render(request, 'transfer_property.html', {'property': property_obj, 'users': users})

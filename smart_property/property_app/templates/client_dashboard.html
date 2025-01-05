@@ -47,9 +47,29 @@
             </div>
         </div>
     </div>
-    
-    
 
+    <div class="my-5">
+        <!-- Section Header -->
+        <h3 class="text-center mb-4 text-primary font-weight-bold">Transaction QR Code</h3>
+        
+        <!-- Display QR Code Section -->
+        {% if profile.qr_code %}
+            <div class="text-center">
+                <!-- QR Code Container with Card and Shadow -->
+                <div class="card shadow-sm p-4" style="max-width: 400px; margin: auto;">
+                    <img src="{{ profile.qr_code.url }}" alt="QR Code" class="img-fluid rounded shadow-sm">
+                    <p class="mt-3 text-muted">Scan the QR code to initiate the transaction.</p>
+                </div>
+            </div>
+        {% else %}
+            <!-- Message When No QR Code is Available -->
+            <div class="alert alert-warning text-center" role="alert">
+                No QR code available for this transaction.
+            </div>
+        {% endif %}
+    </div>
+    
+    
     <div class="table-responsive">
         <table class="table table-bordered table-striped">
             <thead class="thead-dark">
@@ -81,6 +101,8 @@
                     <td>
                         {% if proposal.status == 'accepted' %}
                         <a href="{% url 'view_contract' proposal.id %}" class="btn btn-success btn-sm">View Contract</a>
+                        {%else%}
+                        <a href="{% url 'home' %}" class="btn btn-primary btn-sm">make another proposal</a>
                         {% endif %}
                     </td>
                 </tr>
@@ -89,4 +111,65 @@
         </table>
     </div>
 </div>
+
+<h2 class="text-center my-4">Purchased properties</h2>
+{% if owned_properties %}
+<div class="row">
+    {% for property in owned_properties %}
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div id="propertyCarousel{{ forloop.counter }}" class="carousel slide" data-bs-ride="carousel">
+                <!-- Indicators -->
+                <div class="carousel-indicators">
+                    {% for image in property.images.all %}
+                    <button type="button" data-bs-target="#propertyCarousel{{ forloop.counter }}" 
+                            data-bs-slide-to="{{ forloop.counter0 }}" 
+                            class="{% if forloop.first %}active{% endif %}" 
+                            aria-current="{% if forloop.first %}true{% endif %}" 
+                            aria-label="Slide {{ forloop.counter }}"></button>
+                    {% endfor %}
+                </div>
+
+                <!-- Carousel Items -->
+                <div class="carousel-inner">
+                    {% for image in property.images.all %}
+                    <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                        <img src="{{ image.image.url }}" class="d-block w-100" alt="{{ property.name }}">
+                    </div>
+                    {% endfor %}
+                    {% if property.images.all|length == 0 %}
+                    <div class="carousel-item active">
+                        <img src="/path/to/default/image.jpg" class="d-block w-100" alt="No image available">
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Controls -->
+                <button class="carousel-control-prev" type="button" data-bs-target="#propertyCarousel{{ forloop.counter }}" data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Previous</span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#propertyCarousel{{ forloop.counter }}" data-bs-slide="next">
+                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Next</span>
+                </button>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title text-primary">{{ property.name }}</h5>
+                <p class="card-text">
+                    <strong>Location:</strong> {{ property.location }}<br>
+                    <strong>Category:</strong> {{ property.category }}
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-center text-muted mt-4">you havent purchased any property with us yet.</p>
+{% endif %}
+
+
+
+
 {% endblock %}

@@ -3,8 +3,9 @@
 {% extends 'base.html' %}
 
 {% block content %}
-  <h2>Transaction History</h2>
   <div class="chat-container">
+    <h2  style="text-align:center">Transaction History</h2>
+
     {% for transaction in transaction_messages %}
 
     <!-- Received Bubble -->
@@ -77,9 +78,6 @@
     </div>
     {%endif%}
     {%endfor%}
-{%for transaction in transaction_messages%}
-{{transaction.message}}
-{%endfor%}
   </div>
   
 

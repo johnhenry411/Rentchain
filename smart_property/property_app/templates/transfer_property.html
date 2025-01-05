@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Transfer Ownership: {{ property.name }}</h2>
+<p>Current Owner: {{ property.landlord.username }}</p>
+
+<form method="post">
+    {% csrf_token %}
+    <label for="new_owner">Select New Owner:</label>
+    <select id="new_owner" name="new_owner" required>
+        <option value="">-- Select a User --</option>
+        {% for user in users %}
+            <option value="{{ user.id }}">{{ user.username }}</option>
+        {% endfor %}
+    </select>
+
+    <button type="submit" class="btn btn-primary">Transfer Ownership</button>
+</form>
+
+<a href="{% url 'property_detail' property.id %}" class="btn btn-secondary">Cancel</a>
+<form method="POST" action="{% url 'transfer_property' property.id %}">
+    {% csrf_token %}
+    <select name="new_owner" required>
+        {% for user in users %}
+            <option value="{{ user.id }}">{{ user.username }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">Transfer Ownership</button>
+</form>
+
+{% endblock %}

@@ -1,5 +1,62 @@
 {% extends "base.html" %}
 {%block content%}
+{% load humanize %}
+{% if messages %}
+    <div id="success-alert" class="alert alert-success">
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<!--styling for the messages-->
+
+<style>
+    /* Style the alert box */
+    #success-alert {
+        position: fixed;
+        top: 20px;
+        right: -300px; /* Start off-screen */
+        z-index: 9999;
+        width: 250px;
+        padding: 15px;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        background-color: #d4edda;
+        color: #155724;
+        font-size: 14px;
+        transition: right 0.5s ease, opacity 0.5s ease; /* Smooth slide and fade-out */
+    }
+
+    /* Optional: Add a success icon */
+    #success-alert p {
+        margin: 0;
+        padding: 0;
+    }
+</style>
+
+<!--javascript for the messages-->
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const alert = document.getElementById('success-alert');
+        if (alert) {
+            // Slide in
+            setTimeout(() => {
+                alert.style.right = '20px'; 
+            }, 100); 
+
+            // Slide out after 5 seconds
+            setTimeout(() => {
+                alert.style.right = '-300px'; 
+                alert.style.opacity = '0'; 
+                setTimeout(() => alert.remove(), 500); /
+            }, 5000); 
+        }
+    });
+</script>
+
+
 <!-- Header Start -->
         <div class="container-fluid header bg-white p-0">
             <div class="row g-0 align-items-center flex-column-reverse flex-md-row">
@@ -36,11 +93,13 @@
                         <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.1s">
                             <a class="cat-item d-block bg-light text-center rounded p-3" href="">
                                 <div class="rounded p-4">
-                                    {% with properties.first.images.first as first_image %}
                                     <div class="icon mb-3">
+                                        {% with properties.first.images.first as first_image %}
+
                                         <img class="img-fluid" src="{{ first_image.image.url }}" alt="Property Image">
+                                        {% endwith %}
+
                                     </div>
-                                    {% endwith %}
                                     <h6>{{ category }}</h6>
                                     <span>{{ properties.first.location }}</span>
                                 </div>
@@ -73,66 +132,74 @@
                         <div class="row g-4">
 
                             {% for u in units %}
-                            <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
-                                <div class="property-item rounded overflow-hidden">
-                                    <div class="position-relative overflow-hidden">
-                                        {% if u.images.all|length > 0 %}
-                    <a href="{% url 'property_detail' u.id|stringformat:"i" %}"><img class="img-fluid" src="{{ u.images.all.0.image.url }}" alt="{{ p.name }}"></a>
+<div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+    <div class="property-item rounded overflow-hidden">
+        <div class="position-relative overflow-hidden">
+            {% if u.images.all|length > 0 %}
+            {% if u.status == 'sold' or u.status == 'rented' or u.status == 'leased' %}
+            <!-- Inactive Property Image -->
+                    <img class="img-fluid opacity-50" src="{{ u.images.all.0.image.url }}" alt="{{ u.name }}">
                 {% else %}
-                    <a href=""><img class="img-fluid" src="/path/to/default/image.jpg" alt="No image available"></a>
+                    <!-- Active Property Image -->
+                    <a href="{% url 'property_detail' u.id|stringformat:"i" %}">
+                        <img class="img-fluid" src="{{ u.images.all.0.image.url }}" alt="{{ u.name }}">
+                    </a>
                 {% endif %}
-                                        <div class="bg-primary rounded text-white position-absolute start-0 top-0 m-4 py-1 px-3">For {{u.t_type}}</div>
-                                        <div class="bg-white rounded-top text-primary position-absolute start-0 bottom-0 mx-4 pt-1 px-3">{{u.category}}</div>
-                                    </div>
-                                    <div class="p-4 pb-0">
-                                        <h5 class="text-primary mb-3">KSH. {{ u.price }}</h5>
-                                        <a class="d-block h5 mb-2" href="{% url 'property_detail' u.id|stringformat:"i" %}">{{ u.name }}</a>
-                                        <p><i class="fa fa-map-marker-alt text-primary me-2"></i>{{ u.location }}</p>
-                                    </div>
-                                    <div class="d-flex border-top">
-                                        <small class="flex-fill text-center border-end py-2"><i class="fa fa-ruler-combined text-primary me-2"></i>{{u.size}} Sqft</small>
-                                        <small class="flex-fill text-center border-end py-2"><i class="fa fa-bed text-primary me-2"></i>{{u.beds}} Bed</small>
-                                        <small class="flex-fill text-center py-2"><i class="fa fa-bath text-primary me-2"></i>{{u.baths}} Bath</small>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endfor %}
-        
+            {% else %}
+            {% if u.status == 'sold' or u.status == 'rented' or u.status == 'leased' %}
+            <img class="img-fluid opacity-50" src="/path/to/default/image.jpg" alt="No image available">
+                {% else %}
+                    <a href="{% url 'property_detail' u.id|stringformat:"i" %}">
+                        <img class="img-fluid" src="/path/to/default/image.jpg" alt="No image available">
+                    </a>
+                {% endif %}
+            {% endif %}
+
+            <!-- Property Type Badge -->
+            <div class="bg-primary rounded text-white position-absolute start-0 top-0 m-4 py-1 px-3">
+                For {{ u.t_type }}
+            </div>
+
+            <!-- Category Badge -->
+            <div class="bg-white rounded-top text-primary position-absolute start-0 bottom-0 mx-4 pt-1 px-3">
+                {{ u.category }}
+            </div>
+
+            <!-- Status Overlay -->
+            {% if u.status == 'sold' or u.status == 'rented' or u.status == 'leased' %}
+            <div class="bg-danger text-white position-absolute top-50 start-50 translate-middle text-center py-2 px-4 rounded">
+                    {{ u.status|capfirst }}
+                </div>
+            {% endif %}
+        </div>
+        <div class="p-4 pb-0">
+            {% if u.status == 'sold' or u.status == 'rented' or u.status == 'leased' %}
+            <h5 class="text-secondary mb-3">KSH. {{ u.price|intcomma }}</h5>
+                <p class="d-block h5 mb-2 text-muted">{{ u.name }}</p>
+            {% else %}
+                <h5 class="text-primary mb-3">KSH. {{ u.price|intcomma }}</h5>
+                <a class="d-block h5 mb-2" href="{% url 'property_detail' u.id|stringformat:"i" %}">{{ u.name }}</a>
+            {% endif %}
+            <p><i class="fa fa-map-marker-alt text-primary me-2"></i>{{ u.location }}</p>
+        </div>
+        <div class="d-flex border-top">
+            <small class="flex-fill text-center border-end py-2">
+                <i class="fa fa-ruler-combined text-primary me-2"></i>{{ u.size }} Sqft
+            </small>
+            <small class="flex-fill text-center border-end py-2">
+                <i class="fa fa-bed text-primary me-2"></i>{{ u.beds }} Bed
+            </small>
+            <small class="flex-fill text-center py-2">
+                <i class="fa fa-bath text-primary me-2"></i>{{ u.baths }} Bath
+            </small>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
                             <div class="col-12 text-center wow fadeInUp" data-wow-delay="0.1s">
                                 <a class="btn btn-primary py-3 px-5" href="/real-estate-html-template/property-list.html">Browse More Property</a>
                             </div>
                         </div>
-                    </div>
-                    
-        <!-- Property List End -->
-        <!-- Call to Action Start -->
-        {% comment %} <div class="container-xxl py-5">
-            <div class="container">
-                <div class="bg-light rounded p-3">
-                    <div class="bg-white rounded p-4" style="border: 1px dashed rgba(0, 185, 142, .3)">
-                        <div class="row g-5 align-items-center">
-                            <div class="col-lg-6 wow fadeIn" data-wow-delay="0.1s">
-                                <img class="img-fluid rounded w-100" src="img/call-to-action.jpg" alt="">
-                            </div>
-                            <div class="col-lg-6 wow fadeIn" data-wow-delay="0.5s">
-                                <div class="mb-4">
-                                    <h1 class="mb-3">Contact With the Owner</h1>
-                                    <p>Have a chat with the brains behind this idea</p>
-                                </div>
-                                <a href="#" class="btn btn-primary py-3 px-4 me-2"><i class="fa fa-phone-alt me-2"></i>Make A Call</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div> {% endcomment %}
-        <!-- Call to Action End -->
-
-
-     
-
-
-        
-
-        
+                    </div> 
 {%endblock%}

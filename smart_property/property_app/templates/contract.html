@@ -1,154 +1,200 @@
 {% extends "base.html" %}
 {% block content %}
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            line-height: 1.6;
-            background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
-            color: #333;
-            margin: 0;
-            padding: 0;
-        }
-        .contract-container {
-            max-width: 900px;
-            margin: 2rem auto;
-            padding: 2rem;
-            background: #fff;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-            border-radius: 10px;
-        }
-        .header {
-            text-align: center;
-            color: #4CAF50;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 2.5rem;
-        }
-        .header p {
-            font-style: italic;
-            color: #555;
-        }
-        .section-title {
-            font-size: 1.8rem;
-            margin-top: 1.5rem;
-            color: #4CAF50;
-        }
-        .clause {
-            margin-bottom: 1rem;
-            padding: 0.5rem;
-            border-left: 4px solid #4CAF50;
-            background: #f9f9f9;
-        }
-        .signature-section {
-            text-align: center;
-            margin-top: 2rem;
-        }
-        .signature {
-            display: inline-block;
-            margin: 1rem;
-            padding: 1rem;
-            border: 2px dashed #4CAF50;
-            border-radius: 10px;
-            color: #333;
-        }
-        .signature h3 {
-            margin: 0;
-        }
-        .signature p {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 1rem;
-            color: #666;
-        }
-        footer {
-            text-align: center;
-            font-size: 0.8rem;
-            color: #777;
-            margin-top: 3rem;
-        }
-    </style>
+{% load humanize %}
+<style>
+    /* General Styles */
+body {
+    font-family: 'Times New Roman', Times, serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f9f9f9;
+    margin: 0;
+    padding: 0;
+}
 
-    <div class="contract-container">
-        <div class="header">
-            <h1>The (Surprisingly Thorough) Rental Agreement</h1>
-            <p>"Because good fences make good neighbors, and good contracts make better tenants."
-        </div>
-        <p>
-            Payment Status:
-            <span style="color: {% if status == 'PAID' %}green{% else %}red{% endif %};" title="Payment Status: {{ status }}">
-                {{ contract.payment_status }}
-                <i class="fas {% if contract.payment_status == 'PAID' %}fa-check-circle{% else %}fa-clock{% endif %}"></i>
-            </span>
-            <span class="btn-sm 
-            {% if contract.payment_status == 'PAID' %}
-                btn-success  <!-- Green for accepted -->
-           
-            {% else %}
-                btn-secondary  <!-- Neutral for other statuses -->
-            {% endif %}
-        ">
-            {{ contract.payment_status|capfirst }} <!-- Capitalized status text -->
-        </span>
-            {{contract.proposal.paid_amount}}-{{contract.proposal.proposed_price}}
-            {{status}}
-        </p>
-       
+/* Container */
+.accounting-sheet, .signature-section, footer {
+    background-color: #ffffff;
+    padding: 20px;
+    margin: 20px auto;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    max-width: 800px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.accounting-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.accounting-table th, .accounting-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+}
+
+.accounting-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+.table-title {
+    text-align: center;
+    font-size: 18px;
+    color: #444;
+}
+
+/* Section Titles */
+.section-title {
+    font-size: 18px;
+    margin-top: 20px;
+    color: #444;
+    text-decoration: underline;
+}
+
+/* Clause Styles */
+.clause {
+    margin: 15px 0;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-left: 4px solid #ddd;
+    font-size: 16px;
+}
+
+/* Signature Section */
+.signature-section {
+    display: flex;
+    justify-content: space-between;
+}
+
+.signature {
+    text-align: center;
+    width: 45%;
+}
+
+.signature h3 {
+    font-size: 16px;
+    margin-bottom: 10px;
+    text-decoration: underline;
+}
+
+/* Footer Styles */
+footer {
+    font-size: 14px;
+    color: #666;
+    text-align: center;
+    margin-top: 20px;
+    border-top: 1px solid #ddd;
+    padding-top: 10px;
+}
+
+</style>
+<div class="accounting-sheet">
+    <table class="accounting-table">
+        <thead>
+            <tr>
+                <th colspan="2" class="table-title">Contract Summary (ID: {{contract.id}})</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="label">Total Due</td>
+                <td class="value" id="lease-value">Ksh {{ contract.lease_value | intcomma }}</td>
+            </tr>
+            <tr>
+                <td class="label">Paid Amount</td>
+                <td class="value" id="paid-amount">Ksh {{ contract.paid_amount | intcomma }}</td>
+            </tr>
+            <tr>
+                <td class="label">Balance</td>
+                <td class="value" id="balance">Ksh 0.00</td>
+            </tr>
+            <tr>
+                <td>Payment Status:</td>
+                <td>
+                    <span style="color: {% if contract.payment_status == 'PAID' %}green{% else %}red{% endif %};" title="Payment Status: {{ contract.payment_status }}">
+                        {{ contract.payment_status }}
+                        <i class="fas {% if contract.payment_status == 'PAID' %}fa-check-circle{% elif contract.payment_status == 'OVERPAID' %}fa-exclamation-triangle {%else%} fa-clock{% endif %}"></i>
+                    </span>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% if request.user == property.landlord or request.user.is_superuser %}
+    {% if contract.payment_status == 'PAID' %}
+        <a href="{% url 'transfer_property' property.id %}" class="btn btn-warning">Transfer Ownership</a>
+    {% else %}
+        <p class="text-muted">Ownership transfer is only available for fully paid properties.</p>
+    {% endif %}
+{% endif %}
 
 
-        <h2 class="section-title">1. The Parties Involved</h2>
-        <div class="clause">
-            This agreement is entered into by <strong>{{ landlord.first_name }} {{landlord.last_name}}</strong> (hereinafter referred to as "The Benevolent Overlord") and <strong>{{ client.first_name }} {{client.last_name}}</strong> (hereinafter referred to as "The Appreciative Dweller").
-        </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var leaseValue = parseFloat(document.getElementById('lease-value').textContent.replace('Ksh ', '').replace(/,/g, ''));
+        var paidAmount = parseFloat(document.getElementById('paid-amount').textContent.replace('Ksh ', '').replace(/,/g, ''));
+        var balance = leaseValue - paidAmount;
+        document.getElementById('balance').textContent = `Ksh ${balance.toLocaleString()}`;
+    });
+</script>
 
-        <h2 class="section-title">2. The Property</h2>
-        <div class="clause">
-            The property under this agreement is identified as <strong>{{ property.name }}</strong>, located at <strong>{{ property.location }}</strong>. It is a <strong>{{ property.size }} sq. meter</strong> <strong>{{ property.category }}</strong> property with <strong>{{ property.beds }}</strong> bedroom(s) and <strong>{{ property.baths }}</strong> bathroom(s), designed to bring unparalleled joy and occasional laundry mishaps.
-        </div>
+<h2 class="section-title">1. The Parties Involved</h2>
+<div class="clause">
+    This agreement is entered into by <strong>{{ landlord.first_name }} {{ landlord.last_name }}</strong> (hereinafter referred to as "The Landlord") and <strong>{{ client.first_name }} {{ client.last_name }}</strong> (hereinafter referred to as "The Tenant"). This agreement is tagged with <strong>Contract ID: {{ contract.id }}</strong> for the <strong>Proposal ID: {{ proposal.id }}</strong>.
+</div>
 
-        <h2 class="section-title">3. The Lease Type</h2>
-        <div class="clause">
-            This property is offered under a <strong>{{ property.t_type }}</strong> arrangement. Whether you rent, buy, or lease, remember: with great property comes great responsibility.
-        </div>
+<h2 class="section-title">2. The Property</h2>
+<div class="clause">
+    The property under this agreement is identified as <strong>{{ property.name }}</strong>, located at <strong>{{ property.location }}</strong>. It is a <strong>{{ property.size | intcomma }} sq. meter</strong> <strong>{{ property.category }}</strong> property with <strong>{{ property.beds }}</strong> bedroom(s) and <strong>{{ property.baths }}</strong> bathroom(s). The Tenant acknowledges having inspected the property and accepts it in its current condition.
+</div>
 
-        <h2 class="section-title">4. The Rent</h2>
-        <div class="clause">
-            The tenant agrees to pay a monthly rent of <strong>KES {{ property.price }}</strong>. Payments must be made via approved methods (cash, bank transfer, M-Pesa) and will not be accepted in forms such as IOUs, Monopoly money, or "good vibes."
-        </div>
+<h2 class="section-title">3. The Lease Type</h2>
+<div class="clause">
+    This property is offered under a <strong>{{ property.t_type }}</strong> arrangement. If rented, the tenant agrees to pay a monthly rental fee, and payment must be received by the landlord no later than the fifth day of each calendar month. Late payments will attract a penalty fee of 5% of the monthly rent, calculated on the overdue amount for each month that payment is delayed.
+</div>
 
-        <h2 class="section-title">5. Furnishing Status</h2>
-        <div class="clause">
-            The property is provided as <strong>{{ property.furnishing_status }}</strong>. If unfurnished, the tenant is encouraged to channel their inner interior designer (but please, no neon green walls).
-        </div>
+<h2 class="section-title">4. The Payment Terms</h2>
+<div class="clause">
+    The total lease value is <strong>KES {{ contract.lease_value | intcomma }}</strong>, of which <strong>KES {{ contract.paid_amount | intcomma }}</strong> has been paid. The remaining balance must be cleared by <strong>{{ contract.payment_due_date }}</strong>. Payments shall be made via bank transfer or any other method agreed upon in writing by both parties. This contract shall only be deemed valid and enforceable once the total lease value is fully settled.
+</div>
 
-        <h2 class="section-title">6. Nearby Features</h2>
-        <div class="clause">
-            The property is conveniently located near: <strong>{{ property.nearby_features }}</strong>. These features are provided as-is and cannot be altered (we cannot move the mall closer, no matter how much you ask).
-        </div>
+<h2 class="section-title">5. Furnishing Status</h2>
+<div class="clause">
+    The property is provided as <strong>{{ property.furnishing_status }}</strong>. Any modifications made by the tenant to the furnishing must be approved in writing by the landlord. The tenant agrees to maintain the furnishings in good condition and will be liable for any damages beyond normal wear and tear.
+</div>
 
-        <h2 class="section-title">7. Utilities</h2>
-        <div class="clause">
-            The following utilities are included/excluded: <strong>{{ property.utilities }}</strong>. The tenant agrees not to overload the circuits by running a hairdryer, microwave, and air conditioner simultaneously.
-        </div>
+<h2 class="section-title">6. Maintenance and Repairs</h2>
+<div class="clause">
+    The tenant is responsible for minor repairs and upkeep, including but not limited to replacing light bulbs, cleaning, and maintaining garden areas (if applicable). The landlord is responsible for structural repairs and major maintenance issues, provided the tenant promptly reports such issues in writing within 48 hours of noticing them.
+</div>
 
-        <h2 class="section-title">8. Tenant Responsibilities</h2>
-        <div class="clause">
-            - The tenant shall keep the property clean and refrain from subletting to their pet goldfish.<br>
-            - Any damages caused by "experimental cooking" must be promptly reported to the landlord.
-        </div>
+<h2 class="section-title">7. Utilities</h2>
+<div class="clause">
+    The tenant is responsible for payment of utilities unless otherwise agreed in writing. Utilities include electricity, water, gas, internet services, and any other services required for the property's operation. The landlord is not liable for disruptions in utility services caused by third-party providers or acts of God.
+</div>
 
-        <h2 class="section-title">9. Landlord Responsibilities</h2>
-        <div class="clause">
-            - The landlord will address maintenance issues promptly, provided they are not caused by tenant negligence (e.g., using the toilet as a trash can).<br>
-            - The landlord will not inspect the property without prior notice unless bringing pizza.
-        </div>
+<h2 class="section-title">8. Termination</h2>
+<div class="clause">
+    Either party may terminate this agreement by providing a written notice of at least 30 days prior to the intended termination date. Upon termination, the tenant must ensure all dues are cleared, return all keys, and vacate the premises by the specified date. The property must be returned in its original condition (except for normal wear and tear) upon termination.
+</div>
 
-        <h2 class="section-title">10. Contact Information</h2>
-        <div class="clause">
-            For emergencies, contact the landlord through <strong>{{ property.contact_number }}</strong>. Please do not use this number to send memes, unless they are particularly funny.
-        </div>
-                <div class="signature-section">
+<h2 class="section-title">9. Legal Obligations</h2>
+<div class="clause">
+    This agreement is governed by the laws of Kenya. Any disputes arising from this agreement shall first be attempted to resolve through amicable negotiation between both parties. If unresolved, disputes shall be submitted to arbitration in accordance with Kenyan law before being escalated to the courts.
+</div>
+
+<h2 class="section-title">10. Indemnification</h2>
+<div class="clause">
+    The Tenant agrees to indemnify and hold harmless the Landlord from any claims, damages, losses, or expenses arising out of or related to Tenant's use of the property or any breach of this agreement.
+</div>
+
+<h2 class="section-title">11. Signatures</h2>
+<div class="signature-section">
     <div class="signature">
-        <h3>Client's Signature</h3>
+        <h3>Tenant's Signature</h3>
         {% if contract.client_signature %}
             <p>{{ contract.client_signature }}</p>
         {% else %}
@@ -162,20 +208,17 @@
         {% else %}
             <p>Signature not provided</p>
         {% endif %}
-        <P>{{contract.start_date}}</P>
     </div>
 </div>
 
-               
-    </div>
+<footer>
+    This agreement is legally binding. Any violations may result in legal action, and all parties agree to uphold the terms outlined herein.
+</footer>
 
-    <footer>
-        This agreement is legally binding. Violations will result in strongly worded texts and sad emojis,with some untimely trips to a courthouse.
-    </footer>
 
-    <div>
-        Contract ID: {{ contract.id }}
-        Paid Amount: {{ contract.paid_amount }}
-    </div>
+
+
+    
+    
 
 {%endblock%}

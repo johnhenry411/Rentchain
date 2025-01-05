@@ -63,14 +63,7 @@
                         <a href="{%url 'home'%}" class="nav-item nav-link active">Home</a>
                         <a href="/Rentchain/about.html" class="nav-item nav-link">About</a>
                         
-                        <div class="nav-item dropdown">
-                            <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">Property</a>
-                            <div class="dropdown-menu rounded-0 m-0">
-                                <a href="/Rentchain/property-list.html" class="dropdown-item">Property List</a>
-                                <a href="/Rentchain/property-type.html" class="dropdown-item">Property Type</a>
-                            </div>
-                        </div>
-                        <a href="/Rentchain//contracts.html" class="nav-item nav-link">Contracts</a>
+                        
                         <div class="nav-item dropdown">
                             <a href="/Rentchain/testimonial.html" class="nav-item nav-link" >Testimonials</a>
                             
@@ -82,6 +75,8 @@
     <a href="{% url 'logout' %}" class="nav-item nav-link"><i class="bi bi-box-arrow-right"></i></a>
 {% else %}
     <a href="/login/" class="nav-item nav-link">Login</a>
+    <a href="/signup/" class="nav-item nav-link">SignUp</a>
+
 {% endif %}
 
                 </div>

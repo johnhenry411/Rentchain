@@ -1,6 +1,8 @@
 
 {% extends "base.html" %}
 {% block content %}
+{% load humanize %}
+
 <!-- Property Details Section -->
 <section class="property-details py-5 bg-light">
     <div class="container">
@@ -31,7 +33,7 @@
             <div class="col-md-6">
                 <h2 class="display-4 text-primary">{{ property.name }}</h2>
                 <p class="lead text-muted">Located in {{ property.location }}</p>
-                <h3 class="text-success">KSH. {{ property.price }}</h3>
+                <h3 class="text-success">KSH. {{ property.price|intcomma }}</h3>
 
                 <div class="mt-4">
                     <h4 class="text-primary">Description</h4>
@@ -44,15 +46,18 @@
                     <ul class="list-unstyled">
                         <li><strong>Category:</strong> <span class="badge bg-info">{{ property.get_category_display }}</span></li>
                         <li><strong>For:</strong> <span class="badge bg-success">{{ property.get_t_type_display }}</span></li>
-                        <li><strong>Size:</strong> <span>1,200 Sqft</span></li>
-                        <li><strong>Beds:</strong> <span>3</span></li>
-                        <li><strong>Baths:</strong> <span>2</span></li>
+                        <li><strong>Size:</strong> <span>{{property.size|intcomma}} Sqft</span></li>
+                        <li><strong>Beds:</strong> <span>{{property.beds}}</span></li>
+                        <li><strong>Baths:</strong> <span>{{property.baths}}</span></li>
+                        <li><strong>Landlord:</strong> <span>{{property.landlord.first_name}} {{property.landlord.last_name}}{{property.current_owner}}</span></li>
+
                     </ul>
                 </div>
 
                 <!-- Contact Button -->
                 <div class="mt-4 text-center">
-                    <a href="{% url 'submit_proposal' property.id %}" class="btn btn-success">Propose a Price</a>
+                    <a href="{% url 'submit_proposal' property.id %}" class="btn btn-success">Propose your {{ property.get_t_type_display }} Price</a><br>
+                    <i class="bi bi-info-circle"> if you'd like to proceede with the owners price simply fill it in the proposed price field!</i>
                 </div>
                 
             </div>

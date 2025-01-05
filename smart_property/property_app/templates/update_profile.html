@@ -2,6 +2,61 @@
 
 {% block content %}
 <body>
+
+    {% if messages %}
+    <div id="success-alert" class="alert alert-success">
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<!--styling for the messages-->
+
+<style>
+    /* Style the alert box */
+    #success-alert {
+        position: fixed;
+        top: 20px;
+        right: -300px; /* Start off-screen */
+        z-index: 9999;
+        width: 250px;
+        padding: 15px;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        background-color: #d4edda;
+        color: #155724;
+        font-size: 14px;
+        transition: right 0.5s ease, opacity 0.5s ease; /* Smooth slide and fade-out */
+    }
+
+    /* Optional: Add a success icon */
+    #success-alert p {
+        margin: 0;
+        padding: 0;
+    }
+</style>
+
+<!--javascript for the messages-->
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const alert = document.getElementById('success-alert');
+        if (alert) {
+            // Slide in
+            setTimeout(() => {
+                alert.style.right = '20px'; 
+            }, 100); 
+
+            // Slide out after 5 seconds
+            setTimeout(() => {
+                alert.style.right = '-300px'; 
+                alert.style.opacity = '0'; 
+                setTimeout(() => alert.remove(), 500); /
+            }, 5000); 
+        }
+    });
+</script>
     <div class="container my-5">
         <!-- Page Title -->
         <h2 class="text-center mb-4"><i class="fas fa-edit"></i> Update Profile</h2>
@@ -73,14 +128,6 @@
                             </div>
                         </div>
                     </div>
-                    {% if messages %}
-                    <div class="alert alert-success">
-                        {% for message in messages %}
-                            <p>{{ message }}</p>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-                
                     <!-- Submit Button -->
                     <div class="text-center">
                         <button type="submit" class="btn btn-primary btn-lg">

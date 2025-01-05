@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{%block content%}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            padding: 10px 0;
+            border-bottom: 2px solid #eee;
+        }
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+        }
+        .content {
+            padding: 20px;
+            text-align: center;
+        }
+        .content p {
+            font-size: 16px;
+            color: #555;
+            margin: 10px 0;
+        }
+        .property-details {
+            margin: 20px 0;
+            text-align: left;
+            font-size: 14px;
+            color: #333;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .property-details span {
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .footer a {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .footer a:hover {
+            background-color: #45a049;
+        }
+    </style>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Ownership Transfer Successful</h1>
+        </div>
+        <div class="content">
+            <p>Congratulations! Ownership of the property has been successfully transferred.</p>
+            <div class="property-details">
+                <p><span>Property Name:</span> {{ property.name }}</p>
+                <p><span>Location:</span> {{ property.location }}</p>
+                <p><span>New Owner:</span> {{ new_owner.username }}</p>
+            </div>
+            <p>Thank you for using our platform. If you have any questions, feel free to reach out to us.</p>
+        </div>
+        <div class="footer">
+            <a href="{% url 'property_detail' property.id %}">View Property Details</a>
+        </div>
+    </div>
+</body>
+{%endblock%}

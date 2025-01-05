@@ -8,7 +8,9 @@ import string
 from decimal import Decimal
 import logging 
 from django.db import transaction
-# Assign roles to groups during setup
+import qrcode
+from io import BytesIO
+from django.core.files.base import ContentFile
 def setup_roles():
     # Ensure the necessary groups exist
     client_group, _ = Group.objects.get_or_create(name='Clients')
@@ -82,20 +84,48 @@ class User(AbstractUser):
 
 class Property(models.Model):
     id = models.AutoField(primary_key=True)  # Auto-incrementing ID field
-    landlord = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="properties")
+    landlord = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="properties"
+    )
     name = models.CharField(max_length=255, default='test')
     description = models.TextField(default='test')
-    price = models.DecimalField(max_digits=10, decimal_places=2,default='123')
-    location = models.CharField(max_length=255,default='test')
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=123)
+    location = models.CharField(max_length=255, default='test')
     created_at = models.DateTimeField(auto_now_add=True)
-    number_of_units=models.IntegerField()
-    size=models.IntegerField()
-    baths=models.IntegerField()
-    beds=models.IntegerField()
-    amenities = models.ManyToManyField('Amenity', blank=True, related_name='properties',default='gym')
-    contact_number = models.CharField(max_length=15, blank=True, null=True,default='0711111')
-    utilities = models.TextField(blank=True, null=True, help_text="List included utilities (e.g., water, electricity).",default='water')
-    nearby_features = models.TextField(blank=True, null=True,default='school')
+    number_of_units = models.IntegerField()
+    size = models.IntegerField()
+    baths = models.IntegerField()
+    beds = models.IntegerField()
+    amenities = models.ManyToManyField('Amenity', blank=True, related_name='properties')
+    contact_number = models.CharField(max_length=15, blank=True, null=True, default='0711111')
+    utilities = models.TextField(blank=True, null=True, help_text="List included utilities (e.g., water, electricity).")
+    nearby_features = models.TextField(blank=True, null=True)
+    status = models.CharField(
+        max_length=50, choices=[('available', 'Available'), ('occupied', 'Occupied'), ('sold', 'Sold')],
+        default='available'
+    )
+    current_owner = models.ForeignKey(
+    settings.AUTH_USER_MODEL, 
+    on_delete=models.SET_NULL, 
+    null=True, 
+    blank=True, 
+    related_name="owned_properties"
+)
+
+    def transfer_ownership(self, new_owner):
+        self.current_owner = new_owner
+        self.landlord = new_owner  # Update landlord to reflect the current owner
+        if self.t_type == "sale":
+                self.status = "sold"
+        elif self.t_type == "rent":
+                self.status = "rented"
+        elif self.t_type == "lease":
+                self.status = "leased"
+        else:
+                self.status = "active"  # Default for undefined types
+        self.save()
+
+    
 
     lease_type=[
         ('rent','Rent'),
@@ -171,7 +201,7 @@ class Review(models.Model):
 
 class Profile(models.Model):
     user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,  
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='profile'
     )
@@ -180,9 +210,30 @@ class Profile(models.Model):
     phone_number = models.CharField(max_length=15, blank=True, null=True)
     address = models.CharField(max_length=255, blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
+    qr_code = models.ImageField(upload_to='qr_codes/', blank=True, null=True)
+
+    @staticmethod
+    def generate_qr_code(user):
+        """Generates a QR code URL for initiating a transaction."""
+        # Construct the transaction initiation URL
+        qr_data = f"http://localhost:8000/qr_transaction_view/qr/{user.id}"  # Pass user ID in the URL
+
+        # Generate QR code image
+        qr_image = qrcode.make(qr_data)
+        buffer = BytesIO()
+        qr_image.save(buffer, format="PNG")
+        buffer.seek(0)
+        return ContentFile(buffer.read(), name=f"{user.username}_qr_code.png")
+    
+    def save(self, *args, **kwargs):
+        """Override save to generate QR code before saving the profile."""
+        if not self.qr_code:  # Check if a QR code has not already been assigned
+            self.qr_code = self.generate_qr_code(self.user)  # Generate QR code
+        super().save(*args, **kwargs)  # Call the real save method
 
     def __str__(self):
         return f"{self.user.username}'s Profile"
+
 
 class Proposal(models.Model):
     STATUS_CHOICES = [
@@ -221,7 +272,13 @@ class Proposal(models.Model):
         if self.proposal.proposed_price <= self.paid_amount:
             return "PAID"
         return "PENDING"
-
+    def update_payment_status(self):
+        """Update the payment status based on the paid amount and proposed price."""
+        if self.paid_amount >= self.proposed_price:
+            self.payment_status = 'Paid'
+        else:
+            self.payment_status = 'Pending'
+        self.save()
     def sign_contract(self):
         if self.status == 'accepted':
             self.client_signature = self.generate_signature(self.proposer)
@@ -287,11 +344,15 @@ class Contract(models.Model):
 
     @property
     def payment_status(self):
-        """Dynamically calculate the payment status."""
-        if self.proposal.proposed_price <= self.paid_amount:
+        # if self.proposal.proposed_price <= self.paid_amount:
+        #     return "PAID"
+        # return "PENDING"
+        if self.paid_amount == self.proposal.proposed_price:
             return "PAID"
-        return "PENDING"
-
+        elif self.paid_amount > self.proposal.proposed_price:
+            return "OVERPAID"
+        else:
+            return  "PENDING"
     def generate_signature(self, user):
         """Generate a signature based on the username and a random string."""
         print(f"Generating signature for user: {user}")  # Debugging
@@ -351,6 +412,7 @@ class Transaction(models.Model):
     property = models.ForeignKey('Property', null=True, blank=True, on_delete=models.SET_NULL)
     timestamp = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)  # Tracks when the transaction was completed
+    qr_code = models.ImageField(upload_to='transaction_qrcodes/', blank=True, null=True)
 
     def save(self, *args, **kwargs):
         if not self.reference:
@@ -427,10 +489,4 @@ class Transaction(models.Model):
     property=property_obj
 )
 
-    # def update_payment_status(self):
-    #     """Update the payment status based on the paid amount and proposed price."""
-    #     if self.paid_amount >= self.proposed_price:
-    #         self.payment_status = 'Paid'
-    #     else:
-    #         self.payment_status = 'Pending'
-    #     self.save()
+  

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load humanize %}
 
 {% block content %}
 <div class="container mt-5">
@@ -7,7 +8,7 @@
   <div class="card shadow-sm">
     <div class="card-body">
       {% if wallet %}
-        <h4>Balance: KSH. {{ wallet.balance }}</h4>
+        <h4>Balance: KSH. {{ wallet.balance|intcomma }}</h4>
         <h5>wallet username: {{user.username}}
 
         <h5>wallet address: {{wallet_address}}

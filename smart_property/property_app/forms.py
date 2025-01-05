@@ -91,14 +91,6 @@ class PropertyImageForm(forms.ModelForm):
         fields = ['image']
         
 class ProposalForm(forms.ModelForm):
-    # Adding fields that will be used for the contract
-    lease_value = forms.DecimalField(
-        max_digits=10, decimal_places=2,
-        widget=forms.NumberInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Lease value'
-        })
-    )
     start_date = forms.DateField(
         widget=forms.DateInput(attrs={
             'class': 'form-control', 'type': 'date'
@@ -114,18 +106,27 @@ class ProposalForm(forms.ModelForm):
 
     class Meta:
         model = Proposal
-        fields = ['proposed_price', 'message', 'lease_value', 'start_date', 'end_date']
+        fields = ['proposed_price', 'message', 'start_date', 'end_date']
         widgets = {
             'proposed_price': forms.NumberInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Propose your price'
             }),
             'message': forms.Textarea(attrs={
                 'class': 'form-control',
                 'placeholder': 'Leave a message (optional)',
                 'rows': 4
             }),
+            'start_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'end_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
         }
+
+    def __init__(self, *args, **kwargs):
+        # Extract the property price from kwargs
+        price = kwargs.pop('property_price', None)
+        super().__init__(*args, **kwargs)
+        if price:
+            # Dynamically update the placeholder for proposed_price
+            self.fields['proposed_price'].widget.attrs['placeholder'] = f'Propose your price or proceed with the landlord\'s price: Ksh {price:,}'
 
     def save(self, commit=True):
         # Save the Proposal instance first
@@ -140,7 +141,6 @@ class ProposalForm(forms.ModelForm):
                 landlord=proposal.property.landlord,  # Derived from property
                 client=proposal.proposer,            # Derived from the proposal
                 property=proposal.property,
-                lease_value=self.cleaned_data['lease_value'],
                 start_date=self.cleaned_data['start_date'],
                 end_date=self.cleaned_data['end_date']
             )
