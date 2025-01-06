@@ -219,17 +219,17 @@ async function payWithMetaMask() {
         const userAddress = await signer.getAddress();
         console.log("User Address:", userAddress);
 
-        // Ensure the MetaMask is connected to Sepolia network
+        // Ensure the MetaMask is connected to Amoy network
         const network = await provider.getNetwork();
-        if (network.chainId !== 11155111) {  // Sepolia Testnet ID
-            alert("Please switch to the Sepolia testnet in MetaMask.");
+        if (network.chainId !== 80002) {  // Replace with Amoy Testnet ID
+            alert("Please switch to the Amoy testnet in MetaMask.");
             return;
         }
 
         // Prepare the transaction
         const price = parseFloat(amount) * 1e18; // Convert to Wei (1 ETH = 1e18 Wei)
         const transaction = {
-            to: '0x2C9228C4fF8c0EEee1C5d1B161f956A05fb7008C', // Replace with property owner wallet address
+            to: '0x8Bb737c44240B6D38B5Efb68DBF95BDCe0304DDe', // Replace with property owner wallet address
             value: ethers.utils.parseUnits(price.toString(), 'wei'), // Convert amount to Wei
         };
 
@@ -280,6 +280,7 @@ async function payWithMetaMask() {
 
 // Attach the payWithMetaMask function to the button click event
 document.getElementById('pay-button').addEventListener('click', payWithMetaMask);
+
 
 
 </script>
