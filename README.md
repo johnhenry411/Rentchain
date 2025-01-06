@@ -1,11 +1,3 @@
-# Real Estate Management App – README 🏠
-
-## Overview 📊
-
-The Real Estate Management App is a comprehensive platform designed to facilitate property transactions, user role management, and seamless financial operations. It caters to clients, landlords, and admins with tailored dashboards and functionalities.
-
----
-
 ## Features 🌟
 
 ### User Management
