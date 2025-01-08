@@ -905,8 +905,7 @@ def metamask_payment(request):
             if not tenant_wallet_address or not landlord_wallet_address:
                 return JsonResponse({'message': 'Missing MetaMask wallet addresses.'}, status=400)
 
-            # Simulate a transaction (balance check and sending the transaction will be done on frontend using Ethers.js)
-            # Here, we just check if the provided transaction hash is valid (for now, actual validation is done in the frontend)
+            
             if not transaction_hash:
                 return JsonResponse({'message': 'Transaction Failed: Missing transaction hash.'}, status=400)
 
@@ -1093,7 +1092,7 @@ def transfer_property(request, property_id):
             print(f"An error occurred: {e}")
             messages.error(request, f"An error occurred: {e}")
 
-        return redirect('home')  # Redirect to a property detail page
+        return redirect('home')  
 
     # Render a confirmation page or form
     users = User.objects.exclude(id=request.user.id)  # Exclude the current landlord from the dropdown
