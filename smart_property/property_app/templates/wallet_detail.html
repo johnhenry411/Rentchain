@@ -5,21 +5,173 @@
 <div class="container mt-5">
   <h1 class="mb-4">My Wallet</h1>
 
-  <div class="card shadow-sm">
+  <!-- Container for wallet username and address -->
+  <div class="card shadow-sm mb-4">
     <div class="card-body">
       {% if wallet %}
-        <h4>Balance: KSH. {{ wallet.balance|intcomma }}</h4>
-        <h5>wallet username: {{user.username}}
-
-        <h5>wallet address: {{wallet_address}}
+        <h5>Wallet Username: {{ user.username }}</h5>
+        <h5>Wallet Address: <span id="wallet-address">{{wallet_address}}</span></h5> <!-- Ensure wallet.address is passed here -->
       {% else %}
         <p>You don't have a wallet yet. Please request one from admin to start making transactions.</p>
       {% endif %}
     </div>
   </div>
 
+  <!-- Container for MetaMask balance -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <h4>MetaMask Balance: KSH. <span id="metamask-balance">Loading...</span></h4> <!-- Placeholder for MetaMask balance -->
+    </div>
+  </div>
+
   <div class="mt-4">
-    <a href="{% url 'transaction_history' %}" class="btn btn-info btn-lg">View Transaction History</a>
+    <button id="view-transactions-button" class="btn btn-info btn-lg" >View Transaction History</button>
+  </div>
+
+  <!-- Placeholder for transaction history -->
+  <div class="mt-5" id="transaction-history-container" style="display: none;">
+    <h2>Transaction History</h2>
+    <ul id="transaction-history" class="list-group"></ul>
   </div>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+      fetchMetaMaskBalance();
+
+      const button = document.getElementById('view-transactions-button');
+      let transactionsVisible = false;
+
+      button.addEventListener('click', function() {
+          const transactionHistoryContainer = document.getElementById('transaction-history-container');
+          if (transactionsVisible) {
+              transactionHistoryContainer.style.display = 'none';
+              button.textContent = 'View Transaction History';
+              transactionsVisible = false;
+          } else {
+              fetchTransactions();
+              transactionHistoryContainer.style.display = 'block';
+              button.textContent = 'Hide Transaction History';
+              transactionsVisible = true;
+          }
+      });
+  });
+
+  async function fetchMetaMaskBalance() {
+      const addressElement = document.getElementById('wallet-address'); // Fetching the wallet address element
+      if (!addressElement) {
+          console.error('Wallet address element not found.');
+          return;
+      }
+
+      const address = addressElement.textContent.trim(); // Extracting the text content (address) from the element
+      if (!address) {
+          console.error('Wallet address not found.');
+          return;
+      }
+
+      const apiKey = 'S5NQGM78B9ZBHHC1N8ZVQKD7JCDQVEJN43'; // Your PolygonScan API key
+      const url = `https://api-amoy.polygonscan.com/api?module=account&action=balance&address=${address}&apikey=${apiKey}`;
+
+      try {
+          const response = await fetch(url);
+          const data = await response.json();
+          const balanceInWei = data.result;
+          
+          if (balanceInWei !== undefined) {
+              const balanceInMATIC = balanceInWei / 1e18; // Convert Wei to MATIC
+              const conversionRate = 58.5; // KSH per MATIC
+              const balanceInKSH = balanceInMATIC * conversionRate;
+
+              document.getElementById('metamask-balance').textContent = balanceInKSH.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'); // Format number with commas
+          } else {
+              document.getElementById('metamask-balance').textContent = 'Error fetching balance';
+          }
+      } catch (error) {
+          console.error('Error fetching MetaMask balance:', error);
+          document.getElementById('metamask-balance').textContent = 'Error fetching balance';
+      }
+  }
+
+  async function fetchTransactions() {
+      const addressElement = document.getElementById('wallet-address'); // Fetching the wallet address element
+      if (!addressElement) {
+          console.error('Wallet address element not found.');
+          return;
+      }
+
+      const address = addressElement.textContent.trim(); // Extracting the text content (address) from the element
+      if (!address) {
+          console.error('Wallet address not found.');
+          return;
+      }
+
+      const apiKey = 'S5NQGM78B9ZBHHC1N8ZVQKD7JCDQVEJN43'; // Your PolygonScan API key
+      const url = `https://api-amoy.polygonscan.com/api?module=account&action=txlist&address=${address}&apikey=${apiKey}`;
+
+      try {
+          const response = await fetch(url);
+          const data = await response.json();
+          const transactions = data.result;
+          const transactionHistory = document.getElementById('transaction-history');
+          transactionHistory.innerHTML = ''; // Clear previous transaction history
+
+          transactions.forEach(transaction => {
+              const listItem = document.createElement('li');
+              listItem.classList.add('list-group-item');
+              
+              const amountInMATIC = transaction.value / 1e18; // Convert Wei to MATIC
+              const conversionRate = 58.5; // KSH per MATIC
+              const amountInKSH = amountInMATIC * conversionRate;
+              const messageType = transaction.from.toLowerCase() === address.toLowerCase() ? 'Sent' : 'Received';
+              
+              listItem.innerHTML = `
+                  <p>${messageType} KSH.${amountInKSH.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')} from address ${transaction.from === address.toLowerCase() ? transaction.to : transaction.from}</p>
+                  <small class="text-muted">${new Date(transaction.timeStamp * 1000).toLocaleString()}</small>
+              `;
+
+              transactionHistory.appendChild(listItem);
+          });
+      } catch (error) {
+          console.error('Error fetching transactions:', error);
+      }
+  }
+</script>
+
+<style>
+  .chat-container {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      padding: 20px;
+      background-color: #f9f9f9;
+      max-width: 500px;
+      margin: 0 auto;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+    
+  .list-group-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 15px;
+      background-color: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 5px;
+      margin-bottom: 10px;
+  }
+
+  .list-group-item p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.4;
+  }
+
+  .list-group-item small {
+      margin-top: 5px;
+      font-size: 12px;
+      color: #6c757d;
+  }
+</style>
 {% endblock %}

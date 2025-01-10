@@ -1,22 +1,16 @@
-<!-- transaction_history.html -->
-
 {% extends 'base.html' %}
 
 {% block content %}
   <div class="chat-container">
-    <h2  style="text-align:center">Transaction History</h2>
+    <h2 style="text-align:center">Transaction History</h2>
 
     {% for transaction in transaction_messages %}
 
     <!-- Received Bubble -->
-    {% if transaction.type == 'completed' %}
+    {% if transaction.type == 'completed' or transaction.type == 'completed_property' %}
     <div class="chat-bubble received">
       <div class="message-content">
-        {% if transaction.property %}
-        <p>Received KSH.{{ transaction.amount }} for the property "{{ transaction.property.name }}" from {{ transaction.sender.username }}.</p>
-      {% else %}
-        <p>{{ transaction.message }}</p>
-      {% endif %}
+        <p>Received KSH.{{ transaction.amount }} from address {{ transaction.sender.address }}.</p>
       </div>
       <span class="timestamp">
         {% if transaction.timestamp %}
@@ -29,39 +23,12 @@
           No timestamp available
         {% endif %}
       </span>
-      
-    </div>
-     {% elif  transaction.type == 'completed_property' %}
-    <div class="chat-bubble received">
-      <div class="message-content">
-        {% if transaction.property %}
-        <p>Received KSH.{{ transaction.amount }} for the property "{{ transaction.property.name }}" from {{ transaction.sender.username }}.</p>
-      {% else %}
-        <p>{{ transaction.message }}</p>
-      {% endif %}
-      </div>
-      <span class="timestamp">
-        {% if transaction.timestamp %}
-          {% if transaction.timestamp|date:"Y-m-d" == "now"|date:"Y-m-d" %}
-            today | {{ transaction.timestamp|date:"g:i A" }}
-          {% else %}
-            {{ transaction.timestamp|date:"M d, Y g:i A" }}
-          {% endif %}
-        {% else %}
-          No timestamp available
-        {% endif %}
-      </span>
-      
     </div>
     <!-- Sent Bubble -->
-     {%else%}
+    {% else %}
     <div class="chat-bubble sent">
       <div class="message-content">
-        {% if transaction.property %}
-        <p>Sent KSH.{{ transaction.amount }} for the property "{{ transaction.property.name }}" to {{ transaction.receiver.username }}.</p>
-      {% else %}
-        <p>{{ transaction.message }}</p>
-      {% endif %}
+        <p>Sent KSH.{{ transaction.amount }} to address {{ transaction.receiver.address }}.</p>
       </div>
       <span class="timestamp">
         {% if transaction.timestamp %}
@@ -74,78 +41,75 @@
           No timestamp available
         {% endif %}
       </span>
-      
     </div>
-    {%endif%}
-    {%endfor%}
+    {% endif %}
+    {% endfor %}
   </div>
-  
 
   <style>
     .chat-container {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-        padding: 20px;
-        background-color: #f9f9f9;
-        max-width: 500px;
-        margin: 0 auto;
-        border-radius: 10px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-      }
-      
-      .chat-bubble {
-        display: inline-block;
-        max-width: 80%;
-        padding: 15px;
-        border-radius: 20px;
-        font-size: 14px;
-        line-height: 1.4;
-        position: relative;
-      }
-      
-      .chat-bubble.received {
-        background-color: #e6fffa;
-        color: #2c7a7b;
-        align-self: flex-start;
-        border: 1px solid #bee3f8;
-      }
-      
-      .chat-bubble.sent {
-        background-color: #bee3f8;
-        color: #2b6cb0;
-        align-self: flex-end;
-        border: 1px solid #90cdf4;
-      }
-      
-      .message-content p {
-        margin: 5px 0;
-      }
-      
-      .timestamp {
-        font-size: 12px;
-        color: #718096;
-        text-align: right;
-        margin-top: 8px;
-      }
-      
-      .chat-bubble::after {
-        content: "";
-        position: absolute;
-        width: 10px;
-        height: 10px;
-        background-color: inherit;
-        bottom: -5px;
-        transform: rotate(45deg);
-      }
-      
-      .chat-bubble.received::after {
-        left: 10px;
-      }
-      
-      .chat-bubble.sent::after {
-        right: 10px;
-      }
-      
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      padding: 20px;
+      background-color: #f9f9f9;
+      max-width: 500px;
+      margin: 0 auto;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .chat-bubble {
+      display: inline-block;
+      max-width: 80%;
+      padding: 15px;
+      border-radius: 20px;
+      font-size: 14px;
+      line-height: 1.4;
+      position: relative;
+    }
+    
+    .chat-bubble.received {
+      background-color: #e6fffa;
+      color: #2c7a7b;
+      align-self: flex-start;
+      border: 1px solid #bee3f8;
+    }
+    
+    .chat-bubble.sent {
+      background-color: #bee3f8;
+      color: #2b6cb0;
+      align-self: flex-end;
+      border: 1px solid #90cdf4;
+    }
+    
+    .message-content p {
+      margin: 5px 0;
+    }
+    
+    .timestamp {
+      font-size: 12px;
+      color: #718096;
+      text-align: right;
+      margin-top: 8px;
+    }
+    
+    .chat-bubble::after {
+      content: "";
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background-color: inherit;
+      bottom: -5px;
+      transform: rotate(45deg);
+    }
+    
+    .chat-bubble.received::after {
+      left: 10px;
+    }
+    
+    .chat-bubble.sent::after {
+      right: 10px;
+    }
   </style>
-{%endblock%}
+{% endblock %}

@@ -1098,3 +1098,16 @@ def transfer_property(request, property_id):
     # Render a confirmation page or form
     users = User.objects.exclude(id=request.user.id)  # Exclude the current landlord from the dropdown
     return render(request, 'transfer_property.html', {'property': property_obj, 'users': users})
+
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from .models import Wallet
+
+@login_required
+def wallet_view(request):
+    user_wallet = Wallet.objects.filter(user=request.user).first()
+    context = {
+        'wallet': user_wallet,
+        'user': request.user,
+    }
+    return render(request, 'wallet_detail.html', context)

@@ -12,7 +12,7 @@
     <div class="transaction-right">
         <!-- Selection Menu -->
         <div class="action-selection">
-            <h3>hey there {{request.user.first_name}},what'd you like to to?</h3>
+            <h3>Hey There {{request.user.first_name}},What would you like to do?</h3>
             <button id="send-money-option" class="btn">Send Money</button>
             <button id="pay-property-option" class="btn">Pay for Property</button>
             <button id="pay-with-metamask-option" class="btn">Pay with MetaMask</button>
@@ -188,18 +188,22 @@ if (typeof ethers !== 'undefined') {
 // Function to handle the MetaMask payment
 async function payWithMetaMask() {
     const propertyId = document.getElementById('metamask-property-id').value;
-    const amount = document.getElementById('metamask-amount').value;
+    const amountInKES = document.getElementById('metamask-amount').value;
 
     // Validate inputs
-    if (!propertyId || !amount) {
+    if (!propertyId || !amountInKES) {
         alert("Please select a property and enter the amount.");
         return;
     }
 
-    if (parseFloat(amount) <= 0) {
+    if (parseFloat(amountInKES) <= 0) {
         alert("Amount must be greater than 0.");
         return;
     }
+
+    // Convert the amount from KES to MATIC
+    const conversionRate = 58.5;
+    const amountInMATIC = parseFloat(amountInKES) / conversionRate;
 
     // Check if MetaMask is available and connected
     if (typeof window.ethereum === 'undefined') {
@@ -221,13 +225,13 @@ async function payWithMetaMask() {
 
         // Ensure the MetaMask is connected to Amoy network
         const network = await provider.getNetwork();
-        if (network.chainId !== 80002) {  // Replace with Amoy Testnet ID
+        if (network.chainId !== 80002) {  // Sepolia Testnet ID
             alert("Please switch to the Amoy testnet in MetaMask.");
             return;
         }
 
         // Prepare the transaction
-        const price = parseFloat(amount) * 1e18; // Convert to Wei (1 ETH = 1e18 Wei)
+        const price = amountInMATIC * 1e18; // Convert to Wei (1 ETH = 1e18 Wei)
         const transaction = {
             to: '0x8Bb737c44240B6D38B5Efb68DBF95BDCe0304DDe', // Replace with property owner wallet address
             value: ethers.utils.parseUnits(price.toString(), 'wei'), // Convert amount to Wei
@@ -248,7 +252,7 @@ async function payWithMetaMask() {
             },
             body: JSON.stringify({
                 property_id: propertyId,
-                amount: amount,
+                amount: amountInMATIC,
                 transaction_hash: txResponse.hash,
             }),
         });
@@ -283,6 +287,7 @@ document.getElementById('pay-button').addEventListener('click', payWithMetaMask)
 
 
 
+
 </script>
 
 
@@ -311,7 +316,7 @@ a {
 .btn {
     display: inline-block;
     padding: 10px 20px;
-    background-color: #007bff;
+    background-color: #00B98E;
     color: #fff;
     border-radius: 5px;
     text-align: center;
@@ -353,7 +358,7 @@ a {
 
 .transaction-left h2 {
     margin-top: 20px;
-    color: #007bff;
+    color: #00B98E;
 }
 
 .transaction-right {
@@ -404,7 +409,7 @@ input[type="number"] {
 }
 
 .filter-buttons button:hover {
-    background-color: #0056b3;
+    background-color: #0056b3; 
 }
 
 .transaction-timeline {
