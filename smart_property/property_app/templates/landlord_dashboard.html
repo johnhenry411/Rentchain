@@ -4,13 +4,14 @@
 <link href="//maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
 <script src="//maxcdn.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
 <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<link rel="shortcut icon" href="../static/img/favicon.png" type="image/x-icon">
 <div class="container emp-profile">
    
                             <h5>
-                            hello   {{request.user.username}}, welcome
+                            Hello   {{request.user.username}}, Welcome
                             </h5>
                             <h6>
-                            your email:  {{ request.user.email}}
+                            Your Email:  {{ request.user.email}}
                             </h6>
                             <div class="mb-4">
                                 <a href="{% url 'wallet_detail' %}" class="btn btn-info btn-lg">View Wallet</a>
@@ -186,7 +187,7 @@
     .wrapper{
         display:flex;
         flex-direction: row
-        background-color:red;
+        
     }
     .card {
         border-radius: 10px;
@@ -215,8 +216,8 @@
     }
     
     .btn-primary {
-        background-color: #007bff;
-        border-color: #007bff;
+        background-color: #00B98E;
+        border-color: #00B98E;
     }
     
     .btn-danger {
