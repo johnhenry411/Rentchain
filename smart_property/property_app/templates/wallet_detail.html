@@ -10,7 +10,7 @@
     <div class="card-body">
       {% if wallet %}
         <h5>Wallet Username: {{ user.username }}</h5>
-        <h5>Wallet Address: <span id="wallet-address">{{wallet_address}}</span></h5> <!-- Ensure wallet.address is passed here -->
+        <h5>Wallet Address: <span id="wallet-address">{{ wallet_address }}</span></h5> <!-- Ensure wallet.address is passed here -->
       {% else %}
         <p>You don't have a wallet yet. Please request one from admin to start making transactions.</p>
       {% endif %}
@@ -25,7 +25,7 @@
   </div>
 
   <div class="mt-4">
-    <button id="view-transactions-button" class="btn btn-info btn-lg" >View Transaction History</button>
+    <button id="view-transactions-button" class="btn btn-info btn-lg">View Transaction History</button>
   </div>
 
   <!-- Placeholder for transaction history -->
@@ -71,7 +71,7 @@
       }
 
       const apiKey = 'S5NQGM78B9ZBHHC1N8ZVQKD7JCDQVEJN43'; // Your PolygonScan API key
-      const url = `https://api-amoy.polygonscan.com/api?module=account&action=balance&address=${address}&apikey=${apiKey}`;
+      const url = `https://api-amoy.polygonscan.com/api?module=account&action=balance&address=${address}&apikey=${apiKey}`; // Keep mainnet URL for balance
 
       try {
           const response = await fetch(url);
@@ -124,10 +124,12 @@
               const conversionRate = 58.5; // KSH per MATIC
               const amountInKSH = amountInMATIC * conversionRate;
               const messageType = transaction.from.toLowerCase() === address.toLowerCase() ? 'Sent' : 'Received';
-              
+              const transactionLink = `https://amoy.polygonscan.com/tx/${transaction.hash}`; // Construct the transaction link with the specified URL
+
               listItem.innerHTML = `
                   <p>${messageType} KSH.${amountInKSH.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')} from address ${transaction.from === address.toLowerCase() ? transaction.to : transaction.from}</p>
                   <small class="text-muted">${new Date(transaction.timeStamp * 1000).toLocaleString()}</small>
+                  <p><a href="${transactionLink}" target="_blank">View on Polygon Explorer</a></p>
               `;
 
               transactionHistory.appendChild(listItem);

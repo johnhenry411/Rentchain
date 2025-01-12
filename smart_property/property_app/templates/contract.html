@@ -195,19 +195,14 @@ footer {
 <div class="signature-section">
     <div class="signature">
         <h3>Tenant's Signature</h3>
-        {% if contract.client_signature %}
-            <p>{{ contract.client_signature }}</p>
-        {% else %}
-            <p>Signature not provided</p>
-        {% endif %}
+        <p>{{ client.first_name }} {{ client.last_name }}</p>
+        <p> {{landlord.wallet_address}}</p>
     </div>
     <div class="signature">
         <h3>Landlord's Signature</h3>
-        {% if contract.landlord_signature %}
-            <p>{{ contract.landlord_signature }}</p>
-        {% else %}
-            <p>Signature not provided</p>
-        {% endif %}
+            <p>{{ landlord.first_name }} {{ landlord.last_name }}</p>
+            <p> {{landlord.wallet_address}}</p>
+       
     </div>
 </div>
 

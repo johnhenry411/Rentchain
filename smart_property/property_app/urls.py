@@ -29,5 +29,5 @@ urlpatterns = [
     path('profile/update/', update_profile_view, name='update_profile'),
     path('qr_transaction_view/qr/<int:user_id>/<int:transaction_id>/', views.qr_transaction_view, name='qr_transaction_view'),
     path('property/<int:property_id>/transfer/', views.transfer_property, name='transfer_property'),
-
-]
+    
+    ]
