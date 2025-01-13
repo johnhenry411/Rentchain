@@ -25,6 +25,7 @@ urlpatterns = [
     path('Contracts/', ContractListView.as_view(), name='view_contracts'),
     path('Proposals/', ProposalListView.as_view(), name='view_proposals'),
     path('admins/properties/', PropertyListView.as_view(), name='property_list'),
+    path('metamask_payment/', views.metamask_payment, name='metamask_payment'),
     path('logout/', logout_view, name='logout'),
     path('profile/update/', update_profile_view, name='update_profile'),
     path('qr_transaction_view/qr/<int:user_id>/<int:transaction_id>/', views.qr_transaction_view, name='qr_transaction_view'),

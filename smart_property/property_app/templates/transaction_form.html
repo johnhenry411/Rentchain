@@ -59,7 +59,7 @@
             <select id="metamask-property-id" name="property_id" required>
                 <option value="" disabled selected>Select a property</option>
                 {% for property in properties %}
-                    <option value="{{ property.id }}" data-price="{{ property.price }}">{{ property.name }} - Ksh {{ property.price }}</option>
+                    <option value="{{ property.id }}" data-price="{{ property.price }}">{{ property.name }}</option>
                 {% endfor %}
             </select>
             
@@ -245,7 +245,7 @@ async function payWithMetaMask() {
         await txResponse.wait();
 
         // Now that the transaction is successful, send details to backend
-        const response = await fetch('/transaction/', {  // Change to your endpoint
+        const response = await fetch('/metamask_payment/', {  // Change to your endpoint
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

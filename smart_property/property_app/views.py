@@ -878,65 +878,68 @@ def logout_view(request):
     return redirect('home')  # Redirects to home page after logout
 
 
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
+from django.db import transaction
+import json
+from decimal import Decimal
+import uuid
+from .models import Transaction, Contract
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
+from django.db import transaction
+import json
+from decimal import Decimal
+import uuid
+from .models import Transaction, Contract
+
 @login_required
 @csrf_exempt
 @transaction.atomic
 def metamask_payment(request):
+    print("View reached")
     if request.method == 'POST':
         data = json.loads(request.body)
+        print("Request Data:", data)
         property_id = data.get('property_id')
-        amount = Decimal(data.get('amount', 0))
+        amount = Decimal(data.get('amount', 0))  # This is now in KES
         transaction_hash = data.get('transaction_hash')
 
         try:
             # Validate data
             if amount <= 0:
                 raise ValueError("Invalid amount.")
+            print("Data validated")
 
             # Fetch property and associated contract
             contract = Contract.objects.filter(property_ref=property_id, client=request.user).first()
             if not contract:
                 return JsonResponse({'message': 'Transaction Failed: Invalid property ID.'}, status=400)
+            print("Contract found")
 
-            # Fetch the tenant and landlord wallet addresses (MetaMask addresses)
-            tenant_wallet_address = request.data.get('tenant_wallet_address')
-            landlord_wallet_address = contract.landlord.wallet_address  # Assuming landlord's MetaMask address is stored in contract
-
-            if not tenant_wallet_address or not landlord_wallet_address:
-                return JsonResponse({'message': 'Missing MetaMask wallet addresses.'}, status=400)
-
-            # Simulate a transaction (balance check and sending the transaction will be done on frontend using Ethers.js)
-            # Here, we just check if the provided transaction hash is valid (for now, actual validation is done in the frontend)
-            if not transaction_hash:
-                return JsonResponse({'message': 'Transaction Failed: Missing transaction hash.'}, status=400)
-
-            # Record the transaction
+            # Record the transaction with amount in KES
             Transaction.objects.create(
                 sender=request.user,
                 receiver=contract.landlord,
-                amount=amount,
+                amount=amount,  # Save the amount in KES
                 reference=f"TXN-{uuid.uuid4().hex[:8].upper()}",
                 status='pending',  # Mark the transaction as pending initially
                 property_id=property_id,
                 transaction_hash=transaction_hash
             )
+            print("Transaction recorded")
 
-            # Update contract details and check if the full payment has been made
-            contract.paid_amount += amount
-            if contract.paid_amount >= contract.proposal.proposed_price:
-                contract.proposal.payment_status = "Paid"
-                message = "Payment successful. You have cleared the lease value."
-            else:
-                remaining = contract.proposal.proposed_price - contract.paid_amount
-                message = f"Payment successful. Remaining amount: Ksh {remaining:.2f}"
-
-            contract.save()
-
-            return JsonResponse({'message': message}, status=200)
+            # Send success message
+            return JsonResponse({'message': 'Transaction recorded successfully'}, status=200)
 
         except Exception as e:
-            # Generic error handling
             return JsonResponse({'message': f'Transaction Failed: {str(e)}'}, status=400)
+
+    return JsonResponse({'message': 'Invalid request method'}, status=400)
+
 
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required

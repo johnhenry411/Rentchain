@@ -61,11 +61,7 @@
                 <div class="collapse navbar-collapse" id="navbarCollapse">
                     <div class="navbar-nav ms-auto">
                         <a href="{%url 'home'%}" class="nav-item nav-link active">Home</a>
-                        <a href="/Rentchain/about.html" class="nav-item nav-link">About</a>
-                        
-                        </div>
-                        <a href="/Rentchain/contact.html" class="nav-item nav-link">Contact</a>
-                    </div>
+                    
                     {% if dashboard_url %}
     <a href="{{ dashboard_url }}" class="nav-item nav-link">Hello {{request.user.username}}</a>
     <a href="{% url 'logout' %}" class="nav-item nav-link"><i class="bi bi-box-arrow-right"></i></a>
